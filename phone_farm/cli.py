@@ -221,7 +221,7 @@ def doctor() -> None:
 @click.argument("apk_path", type=click.Path(exists=True))
 @click.option("--description", "-d", default="", help="App description for the AI")
 @click.option("--max-steps", default=200, help="Max exploration steps")
-@click.option("--backend", default="claude", type=click.Choice(["claude", "mock"]))
+@click.option("--backend", default="anthropic", type=click.Choice(["anthropic", "mock"]))
 @click.option("--output", default="./qa_reports", help="Report output directory")
 def qa_test(apk_path: str, description: str, max_steps: int, backend: str, output: str) -> None:
     """Run AI-powered QA testing on an APK."""
@@ -259,12 +259,12 @@ def cleanup() -> None:
     console.print(f"[green]Cleaned up {removed} files[/green]")
 
 
-# --- Emulator commands (for Claude Code / AI agent control) ---
+# --- Emulator commands (for AI agent control) ---
 
 
 @cli.group()
 def emu() -> None:
-    """Control emulator for AI-driven testing (used by Claude Code)."""
+    """Control emulator for AI-driven testing."""
 
 
 @emu.command("boot")
@@ -342,6 +342,17 @@ def emu_crashes() -> None:
         click.echo(json_mod.dumps(crashes, indent=2))
     else:
         console.print("[green]No crashes detected[/green]")
+
+
+# --- Demo command ---
+
+
+@cli.command()
+@click.option("--steps", default=30, help="Number of exploration steps")
+def demo(steps: int) -> None:
+    """Run a demo QA test on Wikipedia app (downloads automatically)."""
+    from phone_farm.demo import run_demo
+    run_async(run_demo(max_steps=steps))
 
 
 # --- Web dashboard ---

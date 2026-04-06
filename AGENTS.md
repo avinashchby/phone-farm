@@ -70,7 +70,7 @@ Summarize findings with severity (critical/high/medium/low), category, steps to 
 - `phone_farm/qa_agent/` — AI QA agent modules (state parsing, memory, bug reports, logcat)
 - `scripts/actions/` — Reusable UI actions (tap, scroll, type, wait)
 - `scripts/flows/` — Pre-scripted test flows
-- `tests/` — 110+ pytest tests
+- `tests/` — 139+ pytest tests
 
 ## Commands
 
@@ -82,7 +82,8 @@ Summarize findings with severity (critical/high/medium/low), category, steps to 
 | `phone-farm report` | View run history |
 | `phone-farm doctor` | Check prerequisites |
 | `phone-farm qa-test <apk>` | AI-powered QA (needs API key) |
-| `phone-farm emu *` | Manual emulator control (for Claude Code) |
+| `phone-farm emu *` | Manual emulator control (for AI agents) |
+| `phone-farm demo` | Demo QA test on Wikipedia app |
 
 ## Dev
 

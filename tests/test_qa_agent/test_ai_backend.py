@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from phone_farm.qa_agent.ai_backend import (
-    ClaudeBackend,
+    AnthropicBackend,
     MockBackend,
     _parse_action_json,
     _parse_visual_issues_json,
@@ -93,7 +93,7 @@ async def test_mock_backend_no_visual_issues() -> None:
 
 
 @pytest.mark.asyncio
-async def test_claude_backend_decide_action_calls_api() -> None:
+async def test_anthropic_backend_decide_action_calls_api() -> None:
     mock_anthropic = MagicMock()
     mock_client = AsyncMock()
     mock_anthropic.AsyncAnthropic.return_value = mock_client
@@ -102,7 +102,7 @@ async def test_claude_backend_decide_action_calls_api() -> None:
     mock_client.messages.create = AsyncMock(return_value=mock_response)
 
     with patch.dict("sys.modules", {"anthropic": mock_anthropic}):
-        backend = ClaudeBackend()
+        backend = AnthropicBackend()
     action = await backend.decide_action(
         screen_xml="<xml/>",
         memory_summary="explored 2 screens",
@@ -114,7 +114,7 @@ async def test_claude_backend_decide_action_calls_api() -> None:
 
 
 @pytest.mark.asyncio
-async def test_claude_backend_analyze_screenshot_calls_api() -> None:
+async def test_anthropic_backend_analyze_screenshot_calls_api() -> None:
     mock_anthropic = MagicMock()
     mock_client = AsyncMock()
     mock_anthropic.AsyncAnthropic.return_value = mock_client
@@ -123,7 +123,7 @@ async def test_claude_backend_analyze_screenshot_calls_api() -> None:
     mock_client.messages.create = AsyncMock(return_value=mock_response)
 
     with patch.dict("sys.modules", {"anthropic": mock_anthropic}):
-        backend = ClaudeBackend()
+        backend = AnthropicBackend()
     issues = await backend.analyze_screenshot(
         screenshot_b64="base64data",
         screen_xml="<xml/>",

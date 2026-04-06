@@ -1,6 +1,6 @@
 #!/bin/bash
 # Phone Farm — One-click installer
-# Usage: curl -sSL https://raw.githubusercontent.com/AvinashChaubey/phone-farm/main/install.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/avinashchby/phone-farm/main/install.sh | bash
 
 set -e
 

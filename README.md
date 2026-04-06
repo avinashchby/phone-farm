@@ -29,12 +29,12 @@ Drop an APK. An AI agent boots an Android emulator, explores the app, finds bugs
 - **Zero-cost alternative** to BrowserStack and Firebase Test Lab
 - **Autonomous AI QA** — the agent reads the screen, makes decisions, and files structured bug reports
 - **Web dashboard** at `localhost:8000` — dark theme, real-time updates, no terminal required
-- **MCP server** — any MCP-compatible agent (Claude Code, etc.) can drive the emulator with simple tool calls
+- **MCP server** — any MCP-compatible AI agent can drive the emulator with simple tool calls
 - **Local-first** — everything runs on your machine; no data leaves your network
 - **CLI control** — full emulator control from the terminal for scripted or manual testing
 - **Crash detection** — logcat monitoring catches crashes and ANRs automatically
 - **Structured reports** — bugs filed with severity, steps to reproduce, and screenshots
-- **122+ tests** — pytest suite covering all core modules
+- **139+ tests** — pytest suite covering all core modules
 - **Built on solid foundations** — Python 3.12, FastAPI, HTMX, Appium, ADB
 
 ---
@@ -62,7 +62,13 @@ pip install "phone-farm[ai]"
 phone-farm doctor          # Check all prerequisites
 ```
 
-**4. Launch the web dashboard**
+**4. Try the demo (no APK needed)**
+
+```bash
+phone-farm demo            # Downloads Wikipedia app, runs QA test automatically
+```
+
+**5. Launch the web dashboard**
 
 ```bash
 phone-farm serve           # Opens at http://localhost:8000
@@ -121,7 +127,7 @@ phone-farm cleanup                   # Remove stale AVDs and logs
 Phone Farm exposes an MCP server so any compatible AI agent can control the emulator directly.
 
 ```bash
-# Add to your MCP config (e.g. Claude Desktop, Claude Code)
+# Add to your MCP client config
 phone-farm-mcp
 ```
 
@@ -215,7 +221,7 @@ db = "./phone-farm.db"
 | CLI | Click + Rich |
 | Database | SQLite (aiosqlite) |
 | Emulator control | ADB + Appium (UIAutomator2) |
-| AI backend | Anthropic Claude (optional) |
+| AI backend | Anthropic API (optional) |
 | MCP integration | FastMCP (mcp>=1.27) |
 | Encryption | cryptography (Fernet) |
 | Testing | pytest + pytest-asyncio |
@@ -226,10 +232,10 @@ db = "./phone-farm.db"
 ## Development
 
 ```bash
-git clone https://github.com/AvinashChaubey/phone-farm
+git clone https://github.com/avinashchby/phone-farm
 cd phone-farm
 uv sync
-uv run pytest -v           # Run 122+ tests
+uv run pytest -v           # Run 139+ tests
 uv run ruff check --fix    # Lint
 phone-farm doctor          # Verify setup
 ```
@@ -259,7 +265,7 @@ phone_farm/
     bug_report.py     Structured bug filing
     logcat.py         Crash and ANR detection
     ai_backend.py     LLM provider abstraction
-tests/                122+ pytest tests
+tests/                139+ pytest tests
 scripts/
   actions/            Reusable UI action scripts
   flows/              Pre-scripted test flows
@@ -301,4 +307,4 @@ Built with:
 - [FastAPI](https://fastapi.tiangolo.com/) — web framework
 - [HTMX](https://htmx.org/) — frontend interactivity
 - [Android Emulator](https://developer.android.com/studio/run/emulator) — virtual device runtime
-- [Anthropic Claude](https://anthropic.com/) — AI backend (optional)
+- [Anthropic](https://anthropic.com/) — AI backend (optional)

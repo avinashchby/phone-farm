@@ -11,7 +11,7 @@ from phone_farm.config import FarmConfig
 from phone_farm.emulator import Emulator
 from phone_farm.log import FarmLogger
 from phone_farm.qa_agent.agent import QAAgent
-from phone_farm.qa_agent.ai_backend import AIBackend, ClaudeBackend, MockBackend
+from phone_farm.qa_agent.ai_backend import AIBackend, AnthropicBackend, MockBackend
 from phone_farm.qa_agent.bug_report import generate_report, save_report_json, QAReport
 
 logger = FarmLogger()
@@ -19,11 +19,11 @@ logger = FarmLogger()
 
 def create_backend(name: str) -> AIBackend:
     """Factory for AI backends."""
-    if name == "claude":
-        return ClaudeBackend()
+    if name in ("anthropic", "claude"):
+        return AnthropicBackend()
     if name == "mock":
         return MockBackend()
-    raise ValueError(f"Unknown AI backend: {name}. Available: claude, mock")
+    raise ValueError(f"Unknown AI backend: {name}. Available: anthropic, mock")
 
 
 class QASession:
@@ -35,7 +35,7 @@ class QASession:
         config: FarmConfig,
         apk_path: str,
         app_description: str,
-        ai_backend: str = "claude",
+        ai_backend: str = "anthropic",
         max_steps: int = 200,
         output_dir: str = "./qa_reports",
     ) -> None:

@@ -31,10 +31,10 @@ def test_create_backend_mock() -> None:
     assert isinstance(backend, MockBackend)
 
 
-def test_create_backend_claude() -> None:
+def test_create_backend_anthropic() -> None:
     mock_anthropic = MagicMock()
     with patch.dict("sys.modules", {"anthropic": mock_anthropic}):
-        backend = create_backend("claude")
+        backend = create_backend("anthropic")
     assert backend is not None
 
 

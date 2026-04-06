@@ -149,15 +149,15 @@ def _parse_visual_issues_json(raw: str) -> list[VisualIssue]:
     ]
 
 
-class ClaudeBackend(AIBackend):
-    """Claude API backend for QA agent decisions."""
+class AnthropicBackend(AIBackend):
+    """Anthropic API backend for QA agent decisions."""
 
     def __init__(self, model: str = "claude-sonnet-4-20250514") -> None:
         try:
             import anthropic
         except ImportError:
             raise ImportError(
-                "anthropic package required for ClaudeBackend. "
+                "anthropic package required for AnthropicBackend. "
                 "Install with: uv pip install 'phone-farm[ai]'"
             )
         self._client = anthropic.AsyncAnthropic()
@@ -170,7 +170,7 @@ class ClaudeBackend(AIBackend):
         app_description: str,
         screenshot_b64: str | None = None,
     ) -> AgentAction:
-        """Ask Claude to decide the next action."""
+        """Ask the AI to decide the next action."""
         user_content: list[dict] = []
         if screenshot_b64:
             user_content.append({
@@ -201,7 +201,7 @@ class ClaudeBackend(AIBackend):
         screen_xml: str,
         context: str,
     ) -> list[VisualIssue]:
-        """Ask Claude to analyze a screenshot for visual issues."""
+        """Ask the AI to analyze a screenshot for visual issues."""
         response = await self._client.messages.create(
             model=self._model,
             max_tokens=1000,

@@ -24,7 +24,7 @@ screenshots = "./screenshots/"
 snapshots = "./data/snapshots/"
 
 [qa_agent]
-ai_backend = "claude"
+ai_backend = "anthropic"
 max_steps = 200
 screenshot_interval = 10
 output_dir = "./qa_reports"
