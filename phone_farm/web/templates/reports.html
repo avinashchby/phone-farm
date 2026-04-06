@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="bg-card border border-border rounded-lg p-4">
+    <h2 class="font-bold text-lg mb-4">QA Reports</h2>
+    {% if state.test_runs %}
+        <table class="w-full">
+            <thead><tr class="text-left text-gray-500 text-sm border-b border-border">
+                <th class="py-2">App</th><th>Status</th><th>Bugs</th><th>Screens</th><th>Steps</th><th>Started</th>
+            </tr></thead>
+            <tbody>
+            {% for run_id, run in state.test_runs.items() %}
+                <tr class="border-b border-border hover:bg-border transition">
+                    <td class="py-2 font-medium">{{ run.apk_name }}</td>
+                    <td class="{% if run.status == 'completed' %}text-success{% elif run.status == 'running' %}text-warn{% elif run.status == 'failed' %}text-accent{% else %}text-gray-500{% endif %}">{{ run.status }}</td>
+                    <td class="{% if run.bugs_found > 0 %}text-accent font-bold{% endif %}">{{ run.bugs_found }}</td>
+                    <td>{{ run.screens_found }}</td>
+                    <td>{{ run.steps_completed }}</td>
+                    <td class="text-gray-500 text-sm">{{ run.started_at[:19] }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="text-gray-500">No reports yet. Run a QA test first.</p>
+    {% endif %}
+</div>
+{% endblock %}

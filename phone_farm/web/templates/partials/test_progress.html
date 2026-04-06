@@ -1,0 +1,19 @@
+<div class="bg-card border border-accent rounded-lg p-6">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-accent font-bold">Testing: {{ run.apk_name }}</h3>
+        <span class="text-sm px-2 py-1 rounded {% if run.status == 'running' %}bg-warn text-black{% else %}bg-success text-black{% endif %}">{{ run.status }}</span>
+    </div>
+    {% if run.latest_screenshot %}
+    <img src="/api/qa/screenshot/{{ run.run_id }}" class="max-h-48 rounded mb-4 mx-auto" alt="Current screen">
+    {% endif %}
+    <div class="grid grid-cols-3 gap-4 text-center">
+        <div><div class="text-2xl font-bold">{{ run.steps_completed }}</div><div class="text-gray-500 text-xs">Steps</div></div>
+        <div><div class="text-2xl font-bold">{{ run.screens_found }}</div><div class="text-gray-500 text-xs">Screens</div></div>
+        <div><div class="text-2xl font-bold text-accent">{{ run.bugs_found }}</div><div class="text-gray-500 text-xs">Bugs</div></div>
+    </div>
+    {% if run.status == 'running' %}
+    <button hx-post="/api/qa/stop/{{ run.run_id }}" hx-swap="none" class="w-full mt-4 bg-border text-white py-2 rounded hover:bg-gray-600">Stop Test</button>
+    {% else %}
+    <a href="/reports" class="block w-full mt-4 bg-success text-black py-2 rounded text-center font-bold">View Report</a>
+    {% endif %}
+</div>

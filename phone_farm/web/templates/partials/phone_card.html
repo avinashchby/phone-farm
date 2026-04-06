@@ -1,0 +1,16 @@
+<div class="bg-card border border-{% if phone.status == 'running' %}success{% else %}border{% endif %} rounded-lg p-3 text-center">
+    {% if phone.last_screenshot %}
+    <img src="/api/phones/{{ phone.slot }}/screenshot" class="h-32 rounded mb-2 mx-auto" alt="Phone {{ phone.slot + 1 }}">
+    {% else %}
+    <div class="bg-border h-32 rounded mb-2 flex items-center justify-center">
+        <span class="text-gray-500">📱</span>
+    </div>
+    {% endif %}
+    <div class="{% if phone.status == 'running' %}text-success{% elif phone.status == 'error' %}text-accent{% else %}text-gray-500{% endif %}">● Phone {{ phone.slot + 1 }}</div>
+    <div class="text-gray-500 text-xs">{{ phone.status }}</div>
+    <div class="flex gap-1 mt-2 justify-center">
+        {% if phone.status == 'running' %}
+        <button hx-post="/api/phones/{{ phone.slot }}/stop" hx-swap="none" class="bg-border px-2 py-1 rounded text-xs hover:bg-gray-600">Stop</button>
+        {% endif %}
+    </div>
+</div>

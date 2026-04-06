@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phone Farm — {% block title %}Dashboard{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bg: '#1a1a2e',
+                        card: '#16213e',
+                        border: '#0f3460',
+                        accent: '#e94560',
+                        success: '#4ecca3',
+                        warn: '#f0c040',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-bg text-gray-200 min-h-screen">
+    <nav class="border-b border-border px-6 py-3 flex items-center gap-4">
+        <span class="text-accent font-bold text-lg">📱 Phone Farm</span>
+        <div class="flex gap-1 ml-4">
+            <a href="/" class="px-4 py-2 rounded {% if active_tab == 'qa' %}bg-accent text-white{% else %}bg-card border border-border hover:bg-border{% endif %}">QA Test</a>
+            <a href="/phones" class="px-4 py-2 rounded {% if active_tab == 'phones' %}bg-accent text-white{% else %}bg-card border border-border hover:bg-border{% endif %}">Phones</a>
+            <a href="/reports" class="px-4 py-2 rounded {% if active_tab == 'reports' %}bg-accent text-white{% else %}bg-card border border-border hover:bg-border{% endif %}">Reports</a>
+            <a href="/settings" class="px-4 py-2 rounded {% if active_tab == 'settings' %}bg-accent text-white{% else %}bg-card border border-border hover:bg-border{% endif %}">Settings</a>
+        </div>
+        <div class="ml-auto text-gray-500 text-sm">v0.1.0</div>
+    </nav>
+    <main class="p-6">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

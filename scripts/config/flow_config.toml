@@ -1,0 +1,7 @@
+[tester-gate]
+flow = "daily_usage"
+description = "Daily usage simulation for Google Play tester gate"
+
+[qa]
+flow = "deep_test"
+description = "Thorough QA testing across all screens"

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}QA Test{% endblock %}
+{% block content %}
+<div class="grid grid-cols-2 gap-6">
+    <div class="bg-card border-2 border-dashed border-accent rounded-lg p-8">
+        <form action="/api/qa/start" method="post" enctype="multipart/form-data" class="text-center">
+            <div class="text-4xl mb-4">📦</div>
+            <div class="text-accent font-bold text-lg mb-2">Drop APK here</div>
+            <div class="text-gray-500 mb-4">or click to browse</div>
+            <input type="file" name="apk" accept=".apk" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-accent file:text-white file:cursor-pointer">
+            <textarea name="description" placeholder="Describe your app for better testing..." class="w-full mt-4 p-3 bg-border rounded text-gray-300 text-sm" rows="3"></textarea>
+            <button type="submit" class="w-full mt-4 bg-accent text-white py-3 rounded-lg font-bold hover:bg-red-600 transition">Start AI QA Test</button>
+        </form>
+    </div>
+    <div>
+        <div class="bg-card border border-border rounded-lg p-4">
+            <h3 class="font-bold mb-3">Recent Tests</h3>
+            {% if state.test_runs %}
+                {% for run_id, run in state.test_runs.items() %}
+                <div class="flex justify-between py-2 border-b border-border text-sm">
+                    <span>{{ run.apk_name }}</span>
+                    <span class="{% if run.bugs_found > 0 %}text-accent{% else %}text-success{% endif %}">{{ run.bugs_found }} bugs</span>
+                    <span class="{% if run.status == 'completed' %}text-success{% elif run.status == 'running' %}text-warn{% else %}text-gray-500{% endif %}">{{ run.status }}</span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-gray-500 text-sm">No tests yet. Upload an APK to start.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

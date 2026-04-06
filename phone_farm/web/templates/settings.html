@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="max-w-2xl">
+    <h2 class="font-bold text-lg mb-4">Prerequisites</h2>
+    <div id="health-checks" hx-get="/api/health/html" hx-trigger="load" hx-swap="innerHTML">
+        <p class="text-gray-500">Checking...</p>
+    </div>
+    <h2 class="font-bold text-lg mt-8 mb-4">About</h2>
+    <div class="bg-card border border-border rounded-lg p-4">
+        <p><span class="text-accent font-bold">Phone Farm</span> v0.1.0</p>
+        <p class="text-gray-500 text-sm mt-2">Open-source AI-powered Android QA testing</p>
+        <p class="text-sm mt-3"><a href="https://github.com/AvinashChaubey/phone-farm" class="text-accent hover:underline">GitHub Repository</a></p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+[farm]
+batch_size = 5
+cycle_delay_seconds = 60
+max_retries = 2
+
+[emulator]
+api_level = 34
+ram_mb = 1536
+headless = true
+device_profile = "pixel_6"
+
+[automation]
+appium_base_port = 4723
+default_flow = "daily_usage"
+screenshot_on_failure = true
+human_like_delays = true
+
+[paths]
+apk = "./app-release.apk"
+scripts = "./scripts/flows/"
+logs = "./logs/"
+db = "./data/phone-farm.db"
+screenshots = "./screenshots/"
+snapshots = "./data/snapshots/"
+
+[qa_agent]
+ai_backend = "claude"
+max_steps = 200
+screenshot_interval = 10
+output_dir = "./qa_reports"
