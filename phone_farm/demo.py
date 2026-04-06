@@ -23,7 +23,7 @@ DEMO_DIR = Path.home() / ".phone-farm" / "demo"
 DEMO_APK = DEMO_DIR / "wikipedia.apk"
 # Wikipedia APK from F-Droid (Apache 2.0, open source)
 DEMO_APK_URL = (
-    "https://f-droid.org/repo/org.wikipedia_50522.apk"
+    "https://f-droid.org/repo/org.wikipedia_50575.apk"
 )
 DEMO_PACKAGE = "org.wikipedia"
 
