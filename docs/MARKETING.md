@@ -38,44 +38,91 @@ Every Android developer has the same workflow: build APK, install on phone, tap 
 
 ## Launch Sequence
 
-### Week 1: Seed (Build social proof before going public)
+### Pre-heat (Day -2 to -1)
 
-**Day 1-2: Soft launch**
-- [ ] Post in r/androiddev (Show & Tell flair): "I built a free tool that tests Android apps with AI — no scripts, no cloud"
-- [ ] Post in r/SideProject: "Show my side project: AI-powered Android QA testing"
-- [ ] Tweet thread with demo GIF (record with `adb screenrecord`)
-- [ ] Post on Dev.to: tutorial-style "How I automated Android QA testing with AI"
+**Day -2: Dev.to article**
+- [ ] Publish: "I replaced my QA team with an AI agent (and it's free)"
+- [ ] Tags: `#android`, `#testing`, `#opensource`, `#ai`
+- [ ] Cross-post to Hashnode (custom domain blog for SEO)
+- [ ] This gets picked up by [daily.dev](https://daily.dev) passively — millions of devs see curated posts
 
-**Day 3-4: MCP angle**
-- [ ] Post in r/ClaudeAI: "I built an MCP server that lets Claude test Android apps"
-- [ ] Submit to awesome-mcp-servers list (PR to GitHub repo)
-- [ ] Post in MCP Discord (if exists)
+**Day -1: Reddit soft launch**
+- [ ] r/selfhosted (~400K subs) — "I built X to solve Y" framing. This community drove 1,200 GitHub stars for Usertour in early 2025
+- [ ] r/opensource (~100K subs) — welcomes project announcements with technical story
+- [ ] r/SideProject (~150K subs) — explicitly allows project sharing
 
-**Day 5: Hacker News**
-- [ ] Submit as "Show HN: Phone Farm — AI-powered Android QA testing, free and local"
-- [ ] Best time: Tuesday-Thursday, 8-9 AM ET
-- [ ] Have a concise top-level comment ready explaining what it does
+### Launch Day (Day 0 — Tuesday or Wednesday)
 
-### Week 2: Amplify
+**Morning: Hacker News (8-9 AM PT)**
+- [ ] Submit: "Show HN: Phone Farm — Free, local-first AI-powered Android QA testing"
+- [ ] Link directly to GitHub repo (NOT a marketing page — repos get more stars)
+- [ ] First comment: 60-word TL;DR + seed question: "What does your mobile QA workflow look like?"
+- [ ] Reply to every comment within 10 minutes for first 2 hours
+- [ ] Have 5-10 people ready for genuine comments in first 30 minutes
+- [ ] Avoid: superlatives ("revolutionary"), clickbait, linking to landing page
 
-- [ ] Post on LinkedIn: professional angle targeting QA leads
-- [ ] Submit to Product Hunt (Tuesday launch day)
-- [ ] Cross-post Dev.to article to Hashnode
-- [ ] Reply to existing threads about "Android testing tools" on Reddit/Stack Overflow
-- [ ] Email Android dev newsletters asking for a mention
+**Same day: Twitter/X thread**
+```
+I built a free, open-source alternative to BrowserStack for Android testing.
+
+Drop an APK. An AI agent explores your app, finds bugs, writes a report.
+
+No scripts. No cloud. No monthly bill.
+
+Here's how it works: [thread with demo GIF]
+```
+- Hashtags: only 1-2 per post (more gets penalized 40%). Use `#opensource` + `#AndroidDev`
+- Tag: @AndroidDev (official Google account), @JakeWharton
+- Also post on [Bluesky](https://bsky.app) — 30M+ users, strong developer/OSS community migrated from Twitter
+
+**Same day: Product Hunt**
+- [ ] Category: Developer Tools > Engineering & Development
+- [ ] First comment: founder story + specific problem + "I'd love your feedback" (NOT "please upvote")
+- [ ] Comment quality now outweighs votes in 2026 algorithm — 50 upvotes + 30 genuine comments > 200 upvotes + 5 comments
+- [ ] Have 50+ supporters ready at launch for genuine feedback
+
+### Day +1: Amplify
+
+- [ ] LinkedIn personal narrative: "Why I built Phone Farm" — tag [top software dev creators](https://linkhub.gg/en/top-creators-2025/category/software-development)
+- [ ] r/androiddev — post in "Show us what you've built" weekly thread (NOT standalone — mods are strict)
+- [ ] r/QualityAssurance (~30K subs) — niche but exact audience
+- [ ] Post on [Peerlist](https://peerlist.io) Projects section
+
+### Day +3: YouTube
+
+- [ ] **Primary video: 2-3 minutes** — install → boot → QA test → results. No fluff
+- [ ] **YouTube Short: under 60 seconds** — "Watch this AI find a bug in 30 seconds" (high shareability)
+- [ ] Embed demo GIF in GitHub README (single highest-impact thing for repo conversion)
+- [ ] Algorithm rewards watch-time relative to length — 2min video watched to completion > 15min with 30% retention
+
+### Week 2: Expand
+
+- [ ] Submit PR to [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) GitHub repo
+- [ ] r/ClaudeAI: "I built an MCP server that lets AI agents test Android apps"
+- [ ] Reply to existing "Android testing tools" threads on Reddit/Stack Overflow
+- [ ] Email Android dev newsletters
+- [ ] Post in Discord communities:
+
+| Discord | Why |
+|---------|-----|
+| [Android Dev](https://discord.gg/android) | Direct audience |
+| [Test Automation University](https://discord.gg/testautomationu) | QA professionals |
+| [Reactiflux](https://discord.gg/reactiflux) (~200K) | Cross-pollination, many mobile devs |
+| [The Coding Den](https://discord.gg/code) (~100K+) | Has showcase channel |
 
 ### Week 3+: Sustain
 
-- [ ] Weekly "What I shipped this week" updates on Twitter
+- [ ] Weekly "What I shipped" updates on Twitter + Bluesky
 - [ ] Answer Stack Overflow questions about Android testing, mention Phone Farm where relevant
 - [ ] Write comparison post: "Phone Farm vs BrowserStack vs Firebase Test Lab"
 - [ ] Contribute to discussions in r/androiddev about testing
+- [ ] Track trending position on [Trendshift.io](https://trendshift.io)
 
 ---
 
 ## Content Pieces
 
-### 1. Demo GIF (Critical — do this first)
+### 1. Demo GIF (Do this FIRST — nothing else matters without it)
 Record a 30-second GIF showing:
 1. `phone-farm demo` command
 2. Emulator booting
@@ -84,55 +131,49 @@ Record a 30-second GIF showing:
 
 Tools: `adb screenrecord` for emulator, `asciinema` for terminal, combine with ffmpeg.
 
-### 2. Dev.to Article
+### 2. Dev.to Article (Day -2)
 Title: "I replaced my QA team with an AI agent (and it's free)"
 - Show the problem (manual testing sucks)
 - Show the solution (one command)
-- Show results (real bug report)
+- Show results (real bug report with screenshots)
 - Link to GitHub
+- Publish 2 days before HN — builds initial stars for social proof
 
-### 3. Twitter Thread
-```
-I built a free, open-source alternative to BrowserStack for Android testing.
+### 3. Twitter/Bluesky Thread (Day 0)
+Build-in-public narrative with demo GIF. Threads outperform single tweets for dev content.
 
-Drop an APK. An AI agent explores your app, finds bugs, writes a report.
-
-No scripts. No cloud. No monthly bill.
-
-Here's how it works: [thread]
-```
-
-### 4. Comparison Table Post
+### 4. Comparison Table Post (Week 3)
 "I tested my app with BrowserStack ($129/mo), Firebase Test Lab, and Phone Farm (free). Here's what each found."
+Real results, real comparison, real screenshots.
+
+---
+
+## Reddit Etiquette (Critical)
+
+- **80/20 rule**: 80% genuine participation, 20% your own stuff. Reddit shadowbans self-promo accounts
+- Read each sub's sidebar rules. Many have specific self-promo threads
+- Frame as problem-solving: "I was frustrated with manual Android QA so I built..." NOT "Announcing Phone Farm"
+- Reply to every comment on your post
+- Never coordinate upvotes — Reddit detects and penalizes this
 
 ---
 
 ## GitHub Optimization
 
-### Topics (add to repo settings)
-- android
-- android-testing
-- qa-automation
-- mcp
-- ai-testing
-- appium
-- emulator
-- mobile-testing
-- bug-detection
-- test-automation
+### Topics (already added)
+android, android-testing, qa-automation, mcp, ai-testing, appium, emulator, mobile-testing, bug-detection, test-automation
 
-### README badges to add
-```markdown
-[![PyPI](https://img.shields.io/pypi/v/phone-farm)](https://pypi.org/project/phone-farm/)
-[![Downloads](https://img.shields.io/pypi/dm/phone-farm)](https://pypi.org/project/phone-farm/)
-[![GitHub stars](https://img.shields.io/github/stars/avinashchby/phone-farm)](https://github.com/avinashchby/phone-farm)
-```
+### README badges (already added)
+PyPI version, downloads, stars, tests passing, license
 
-### Issue templates
-Create templates for:
-- Bug report
-- Feature request
-- "Tested my app — here's what Phone Farm found" (community showcase)
+### Issue templates (already added)
+Bug report, Feature request, App showcase
+
+### Additional
+- [ ] Enable GitHub Discussions for community engagement
+- [ ] Pin a "Getting Started" discussion
+- [ ] Use GitHub Releases with proper changelogs for each update
+- [ ] Stars velocity matters more than total: 100 stars in 24 hours > 1,000 over 6 months for trending
 
 ---
 
@@ -140,22 +181,25 @@ Create templates for:
 
 | Metric | Target (30 days) | Target (90 days) |
 |--------|-------------------|-------------------|
-| GitHub stars | 100 | 500 |
+| GitHub stars | 100 | 500+ |
 | PyPI installs | 200 | 1,000 |
 | Dev.to views | 5,000 | - |
 | HN points | 50+ | - |
 | Discord/community members | 20 | 100 |
 | Contributors | 3 | 10 |
 
+Key insight: Getting to 1,000 stars in the first week signals momentum. The pre-heat + stagger strategy is designed for this.
+
 ---
 
 ## What NOT to Do
 
-- Don't compare to Maestro on scripting — you'll lose. Compare on exploration.
-- Don't say "AI-powered" without showing results. Always lead with the demo.
-- Don't launch on multiple platforms the same day. Stagger for sustained visibility.
-- Don't ask for stars. Ship useful updates and stars follow.
-- Don't build Pro features until Community has 200+ stars. Validate demand first.
+- Don't compare to Maestro on scripting — you'll lose. Compare on **exploration**
+- Don't say "AI-powered" without showing results. Always lead with the demo GIF
+- Don't launch on multiple platforms the same day. Stagger for sustained visibility
+- Don't ask for stars. Ship useful updates and stars follow
+- Don't build Pro features until Community has 200+ stars. Validate demand first
+- Don't coordinate upvote drives — Reddit and Product Hunt detect and penalize this in 2026
 
 ---
 
@@ -167,4 +211,4 @@ Create templates for:
 4. Power users want multi-device, CI/CD, regression detection
 5. Offer Pro at $29/mo or Team at $99/mo/seat
 
-The free version is the funnel. The AI is the upgrade.
+**The free version is the funnel. The AI is the upgrade.**
