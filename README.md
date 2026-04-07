@@ -292,8 +292,6 @@ The free version finds crashes. Pro finds *everything else*.
 | Regression detection (APK diff) | - | Yes |
 | Export bugs as Maestro/Appium scripts | - | Yes |
 
-See [ROADMAP.md](ROADMAP.md) for the full plan.
-
 Want early access? Star the repo or email avinash@remotelama.com.
 
 ---
