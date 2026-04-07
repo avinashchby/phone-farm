@@ -2,9 +2,12 @@
 
 **AI-powered Android QA testing on your own machine — no cloud, no accounts, no monthly bill.**
 
+[![PyPI](https://img.shields.io/pypi/v/phone-farm)](https://pypi.org/project/phone-farm/)
+[![Downloads](https://img.shields.io/pypi/dm/phone-farm)](https://pypi.org/project/phone-farm/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 [![License MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-122%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-139%20passing-brightgreen)](https://github.com/avinashchby/phone-farm/actions)
+[![GitHub stars](https://img.shields.io/github/stars/avinashchby/phone-farm)](https://github.com/avinashchby/phone-farm)
 
 Drop an APK. An AI agent boots an Android emulator, explores the app, finds bugs, and writes a report — all running locally.
 
@@ -270,6 +273,28 @@ scripts/
   actions/            Reusable UI action scripts
   flows/              Pre-scripted test flows
 ```
+
+---
+
+## Roadmap: Phone Farm Pro
+
+The free version finds crashes. Pro finds *everything else*.
+
+| Feature | Community (Free) | Pro (Coming) |
+|---|---|---|
+| Crash & ANR detection | Yes | Yes |
+| Deterministic explorer | Yes | Yes |
+| CLI + MCP + Web dashboard | Yes | Yes |
+| AI vision testing | - | Yes |
+| Smart test data generation | - | Yes |
+| Multi-device parallel testing | - | Yes |
+| CI/CD GitHub Action | - | Yes |
+| Regression detection (APK diff) | - | Yes |
+| Export bugs as Maestro/Appium scripts | - | Yes |
+
+See [ROADMAP.md](ROADMAP.md) for the full plan.
+
+Want early access? Star the repo or email avinash@remotelama.com.
 
 ---
 
