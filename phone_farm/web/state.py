@@ -14,6 +14,7 @@ class PhoneState:
     adb_serial: str
     status: str = "booting"
     last_screenshot: str | None = None
+    emulator: object | None = field(default=None, repr=False)
 
 
 @dataclass
@@ -40,6 +41,12 @@ class AppState:
     def __init__(self) -> None:
         self.phones: dict[int, PhoneState] = {}
         self.test_runs: dict[str, TestRun] = {}
+        self.anthropic_api_key: str | None = None
+
+    @property
+    def pro_mode_available(self) -> bool:
+        """Whether AI-powered Pro mode is available."""
+        return self.anthropic_api_key is not None
 
     def add_phone(self, slot: int, adb_serial: str) -> None:
         """Register a phone at the given slot."""

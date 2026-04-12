@@ -3,27 +3,54 @@
 {% block content %}
 <div class="grid grid-cols-2 gap-6">
     <div class="bg-card border-2 border-dashed border-accent rounded-lg p-8">
-        <form action="/api/qa/start" method="post" enctype="multipart/form-data" class="text-center">
+        <form hx-post="/api/qa/start" hx-target="#test-status" hx-swap="innerHTML" hx-encoding="multipart/form-data" class="text-center">
             <div class="text-4xl mb-4">📦</div>
             <div class="text-accent font-bold text-lg mb-2">Drop APK here</div>
             <div class="text-gray-500 mb-4">or click to browse</div>
-            <input type="file" name="apk" accept=".apk" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-accent file:text-white file:cursor-pointer">
+            <input type="file" name="apk" accept=".apk" required class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-accent file:text-white file:cursor-pointer">
             <textarea name="description" placeholder="Describe your app for better testing..." class="w-full mt-4 p-3 bg-border rounded text-gray-300 text-sm" rows="3"></textarea>
-            <button type="submit" class="w-full mt-4 bg-accent text-white py-3 rounded-lg font-bold hover:bg-red-600 transition">Start AI QA Test</button>
+            {% if state.pro_mode_available %}
+            <div class="mt-3 flex items-center gap-2 justify-center">
+                <label class="text-sm text-gray-400">Mode:</label>
+                <select name="mode" class="bg-border text-gray-300 text-sm rounded px-3 py-1">
+                    <option value="ai">AI Exploration (Pro)</option>
+                    <option value="deterministic">Deterministic (Free)</option>
+                </select>
+            </div>
+            {% endif %}
+            <button type="submit" class="w-full mt-4 bg-accent text-white py-3 rounded-lg font-bold hover:bg-red-600 transition">
+                {% if state.pro_mode_available %}Start AI QA Test{% else %}Start QA Test{% endif %}
+            </button>
+            {% if state.pro_mode_available %}
+            <p class="text-success text-xs mt-2">Pro mode active — AI-powered exploration enabled</p>
+            {% else %}
+            <p class="text-gray-500 text-xs mt-2">Free mode — deterministic exploration. <a href="/settings" class="text-accent hover:underline">Add API key</a> for AI mode.</p>
+            {% endif %}
         </form>
     </div>
     <div>
-        <div class="bg-card border border-border rounded-lg p-4">
-            <h3 class="font-bold mb-3">Recent Tests</h3>
+        <div id="test-status" class="bg-card border border-border rounded-lg p-4 mb-4">
             {% if state.test_runs %}
                 {% for run_id, run in state.test_runs.items() %}
-                <div class="flex justify-between py-2 border-b border-border text-sm">
-                    <span>{{ run.apk_name }}</span>
-                    <span class="{% if run.bugs_found > 0 %}text-accent{% else %}text-success{% endif %}">{{ run.bugs_found }} bugs</span>
-                    <span class="{% if run.status == 'completed' %}text-success{% elif run.status == 'running' %}text-warn{% else %}text-gray-500{% endif %}">{{ run.status }}</span>
+                <div class="py-3 border-b border-border" hx-get="/api/qa/status/{{ run_id }}/html" hx-trigger="every 3s" hx-swap="innerHTML">
+                    <div class="flex justify-between text-sm">
+                        <span class="font-mono">{{ run.apk_name }}</span>
+                        <span class="{% if run.status == 'completed' %}text-success{% elif run.status == 'running' %}text-warn{% elif run.status == 'error' %}text-accent{% else %}text-gray-500{% endif %}">{{ run.status }}</span>
+                    </div>
+                    <div class="flex gap-4 mt-1 text-xs text-gray-500">
+                        <span>Steps: {{ run.steps_completed }}</span>
+                        <span>Screens: {{ run.screens_found }}</span>
+                        <span class="{% if run.bugs_found > 0 %}text-accent{% endif %}">Bugs: {{ run.bugs_found }}</span>
+                    </div>
+                    {% if run.status == 'running' %}
+                    <button hx-post="/api/qa/stop/{{ run_id }}" hx-swap="none" class="mt-2 text-xs text-accent hover:underline">Stop</button>
+                    {% elif run.report_path %}
+                    <a href="/api/qa/report/{{ run_id }}" class="mt-2 text-xs text-success hover:underline">Download Report</a>
+                    {% endif %}
                 </div>
                 {% endfor %}
             {% else %}
+                <h3 class="font-bold mb-3">Recent Tests</h3>
                 <p class="text-gray-500 text-sm">No tests yet. Upload an APK to start.</p>
             {% endif %}
         </div>

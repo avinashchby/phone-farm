@@ -33,12 +33,13 @@ async def _run_qa_loop(
     run_id: str,
     apk_path: Path,
     config: FarmConfig,
+    api_key: str | None = None,
 ) -> None:
     """Run the full QA test lifecycle as a background task.
 
-    Uses ADB commands directly (no Appium driver needed) to match
-    the MCP server approach. This avoids the anthropic dependency —
-    the loop does deterministic exploration without an AI backend.
+    When api_key is provided, uses the AI agent (Pro mode) with the
+    Anthropic API for intelligent exploration. Otherwise falls back
+    to deterministic ADB-based exploration (Free mode).
     """
     emu: Emulator | None = None
     appium: AppiumServer | None = None
@@ -90,48 +91,16 @@ async def _run_qa_loop(
 
         # 5. Exploration loop
         SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
-        seen_screens: set[str] = set()
-        stale_count = 0
 
-        for step in range(max_steps):
-            if run.status == "stopped":
-                break
+        if api_key:
+            bugs = await _run_ai_exploration(
+                emu, appium, apk_path, run, state, api_key, max_steps,
+            )
+        else:
+            bugs = await _run_deterministic_exploration(
+                emu, run, state, max_steps, bugs,
+            )
 
-            try:
-                step_bugs = await _exploration_step(
-                    emu.adb_serial, step, seen_screens, run, state, bugs
-                )
-                bugs.extend(step_bugs)
-
-                prev_count = len(seen_screens)
-                seen_screens.add(f"step-{step}")  # fallback tracking
-                if run.screens_found > prev_count:
-                    stale_count = 0
-                else:
-                    stale_count += 1
-                run.steps_completed = step + 1
-
-                # If stuck, press back
-                if stale_count > 10:
-                    await run_cmd(
-                        ["adb", "-s", emu.adb_serial, "shell", "input", "keyevent", "BACK"],
-                        timeout=5,
-                    )
-                    stale_count = 0
-
-            except Exception as e:
-                logger.error(f"Step {step} error: {e}")
-                # Check for crashes
-                crash_bugs = await _check_crashes(emu.adb_serial)
-                bugs.extend(crash_bugs)
-                run.bugs_found = len(bugs)
-                if crash_bugs:
-                    continue
-                break
-
-        # 6. Final crash check
-        final_crashes = await _check_crashes(emu.adb_serial)
-        bugs.extend(final_crashes)
         run.bugs_found = len(bugs)
 
         # 7. Generate report
@@ -171,6 +140,116 @@ async def _run_qa_loop(
             except Exception:
                 pass
         state.remove_phone(slot)
+
+
+async def _run_ai_exploration(
+    emu: Emulator,
+    appium: AppiumServer,
+    apk_path: Path,
+    run,
+    state: AppState,
+    api_key: str,
+    max_steps: int,
+) -> list[Bug]:
+    """Run AI-powered exploration using the QA agent."""
+    from appium import webdriver
+    from appium.options.android import UiAutomator2Options
+
+    from phone_farm.qa_agent.agent import QAAgent
+    from phone_farm.qa_agent.ai_backend import AnthropicBackend
+
+    options = UiAutomator2Options()
+    options.udid = emu.adb_serial
+    options.app = str(apk_path.resolve())
+    options.auto_grant_permissions = True
+    options.no_reset = True
+
+    driver = webdriver.Remote(
+        command_executor=f"http://127.0.0.1:{appium.port}/wd/hub",
+        options=options,
+    )
+
+    try:
+        import os
+        os.environ["ANTHROPIC_API_KEY"] = api_key
+        ai = AnthropicBackend()
+
+        agent = QAAgent(
+            driver=driver,
+            ai=ai,
+            adb_serial=emu.adb_serial,
+            app_description=run.app_description or run.apk_name,
+            screenshot_dir=SCREENSHOT_DIR,
+            max_steps=max_steps,
+        )
+
+        # Patch agent to update web state on each step
+        original_step = agent._step
+
+        async def _step_with_progress(step: int) -> list[Bug]:
+            result = await original_step(step)
+            run.steps_completed = step + 1
+            run.screens_found = agent.memory.unique_screens
+            run.bugs_found += len(result)
+            return result
+
+        agent._step = _step_with_progress
+        return await agent.run()
+    finally:
+        try:
+            driver.quit()
+        except Exception:
+            pass
+
+
+async def _run_deterministic_exploration(
+    emu: Emulator,
+    run,
+    state: AppState,
+    max_steps: int,
+    bugs: list[Bug],
+) -> list[Bug]:
+    """Run deterministic exploration using ADB commands."""
+    seen_screens: set[str] = set()
+    stale_count = 0
+
+    for step in range(max_steps):
+        if run.status == "stopped":
+            break
+
+        try:
+            step_bugs = await _exploration_step(
+                emu.adb_serial, step, seen_screens, run, state, bugs
+            )
+            bugs.extend(step_bugs)
+
+            prev_count = len(seen_screens)
+            seen_screens.add(f"step-{step}")
+            if run.screens_found > prev_count:
+                stale_count = 0
+            else:
+                stale_count += 1
+            run.steps_completed = step + 1
+
+            if stale_count > 10:
+                await run_cmd(
+                    ["adb", "-s", emu.adb_serial, "shell", "input", "keyevent", "BACK"],
+                    timeout=5,
+                )
+                stale_count = 0
+
+        except Exception as e:
+            logger.error(f"Step {step} error: {e}")
+            crash_bugs = await _check_crashes(emu.adb_serial)
+            bugs.extend(crash_bugs)
+            run.bugs_found = len(bugs)
+            if crash_bugs:
+                continue
+            break
+
+    final_crashes = await _check_crashes(emu.adb_serial)
+    bugs.extend(final_crashes)
+    return bugs
 
 
 async def _exploration_step(
@@ -243,10 +322,20 @@ async def _exploration_step(
 
 
 def _simple_screen_sig(xml: str) -> str:
-    """Compute a simple screen signature from UI XML."""
+    """Compute a screen signature from structural elements in the UI XML.
+
+    Hashes resource-ids, text content, and class names rather than the
+    raw XML, so minor attribute changes (e.g. focused state, scroll
+    position) don't create false-new screens.
+    """
     import hashlib
-    # Use a hash of text content and resource-ids for dedup
-    return hashlib.sha256(xml.encode()).hexdigest()[:16]
+    import re
+
+    resource_ids = sorted(re.findall(r'resource-id="([^"]+)"', xml))
+    texts = sorted(re.findall(r'text="([^"]+)"', xml))
+    classes = sorted(re.findall(r'class="([^"]+)"', xml))
+    structural = "|".join(resource_ids) + "||" + "|".join(texts) + "||" + "|".join(classes)
+    return hashlib.sha256(structural.encode()).hexdigest()[:16]
 
 
 def _extract_clickables(xml: str) -> list[dict]:
@@ -309,9 +398,11 @@ def start_qa_background(
     state: AppState,
     run_id: str,
     apk_path: Path,
+    api_key: str | None = None,
 ) -> asyncio.Task:
     """Launch the QA test as a background asyncio task.
 
+    When api_key is provided, uses AI-powered exploration (Pro mode).
     Returns the task so it can be cancelled if needed.
     """
     if not DEFAULT_CONFIG.exists():
@@ -319,7 +410,7 @@ def start_qa_background(
 
     config = load_config(DEFAULT_CONFIG)
     task = asyncio.create_task(
-        _run_qa_loop(state, run_id, apk_path, config),
+        _run_qa_loop(state, run_id, apk_path, config, api_key=api_key),
         name=f"qa-{run_id}",
     )
     # Store task on the run for cancellation

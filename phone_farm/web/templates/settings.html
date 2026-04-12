@@ -2,15 +2,44 @@
 {% block title %}Settings{% endblock %}
 {% block content %}
 <div class="max-w-2xl">
+    <h2 class="font-bold text-lg mb-4">AI Configuration</h2>
+    <div class="bg-card border border-border rounded-lg p-4 mb-6">
+        <div id="api-key-form">
+            {% if state.pro_mode_available %}
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-success">&#10004;</span>
+                <span class="text-success font-bold">Pro mode active</span>
+            </div>
+            <p class="text-gray-500 text-sm mb-3">API key configured. AI-powered exploration is enabled.</p>
+            <form hx-post="/api/settings/api-key" hx-target="#api-key-form" hx-swap="innerHTML">
+                <input type="hidden" name="api_key" value="">
+                <button type="submit" class="text-sm text-accent hover:underline">Remove API key</button>
+            </form>
+            {% else %}
+            <p class="text-gray-400 text-sm mb-3">
+                Add your Anthropic API key to enable AI-powered QA exploration.
+                Get one at <a href="https://console.anthropic.com/settings/keys" class="text-accent hover:underline" target="_blank">console.anthropic.com</a>.
+            </p>
+            <form hx-post="/api/settings/api-key" hx-target="#api-key-form" hx-swap="innerHTML" class="flex gap-2">
+                <input type="password" name="api_key" placeholder="sk-ant-..." required
+                    class="flex-1 p-2 bg-border rounded text-gray-300 text-sm font-mono">
+                <button type="submit" class="bg-accent text-white px-4 py-2 rounded text-sm font-bold hover:bg-red-600 transition">Save</button>
+            </form>
+            <p class="text-gray-600 text-xs mt-2">Key is stored in memory only — not saved to disk. Set ANTHROPIC_API_KEY env var for persistence.</p>
+            {% endif %}
+        </div>
+    </div>
+
     <h2 class="font-bold text-lg mb-4">Prerequisites</h2>
     <div id="health-checks" hx-get="/api/health/html" hx-trigger="load" hx-swap="innerHTML">
         <p class="text-gray-500">Checking...</p>
     </div>
+
     <h2 class="font-bold text-lg mt-8 mb-4">About</h2>
     <div class="bg-card border border-border rounded-lg p-4">
         <p><span class="text-accent font-bold">Phone Farm</span> v0.1.0</p>
         <p class="text-gray-500 text-sm mt-2">Open-source AI-powered Android QA testing</p>
-        <p class="text-sm mt-3"><a href="https://github.com/AvinashChaubey/phone-farm" class="text-accent hover:underline">GitHub Repository</a></p>
+        <p class="text-sm mt-3"><a href="https://github.com/avinashchby/phone-farm" class="text-accent hover:underline">GitHub Repository</a></p>
     </div>
 </div>
 {% endblock %}

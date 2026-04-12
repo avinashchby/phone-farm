@@ -149,6 +149,48 @@ async def screenshot(save_path: str = "./screenshot.png") -> str:
     return f"Screenshot saved to {path}"
 
 
+def _find_element_center(
+    xml: str,
+    *,
+    resource_id: str | None = None,
+    text: str | None = None,
+) -> tuple[int, int] | None:
+    """Find an element's center coordinates from UI XML.
+
+    Uses xml.etree for reliable parsing regardless of attribute order.
+    Falls back to regex if XML parsing fails.
+    """
+    import re
+    from xml.etree import ElementTree
+
+    try:
+        root = ElementTree.fromstring(xml)
+        for node in root.iter("node"):
+            if resource_id and node.get("resource-id") != resource_id:
+                continue
+            if text and node.get("text") != text:
+                continue
+            bounds = node.get("bounds", "")
+            m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds)
+            if m:
+                x = (int(m.group(1)) + int(m.group(3))) // 2
+                y = (int(m.group(2)) + int(m.group(4))) // 2
+                return (x, y)
+    except ElementTree.ParseError:
+        # Fallback: regex search
+        attr = f'resource-id="{resource_id}"' if resource_id else f'text="{text}"'
+        pattern = re.escape(attr) + r'[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"'
+        match = re.search(pattern, xml)
+        if not match:
+            pattern = r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"[^>]*' + re.escape(attr)
+            match = re.search(pattern, xml)
+        if match:
+            x = (int(match.group(1)) + int(match.group(3))) // 2
+            y = (int(match.group(2)) + int(match.group(4))) // 2
+            return (x, y)
+    return None
+
+
 @mcp.tool()
 async def tap(
     text: str | None = None,
@@ -168,28 +210,28 @@ async def tap(
         return "Error: No emulator running. Call boot() first."
 
     serial = _emulator.adb_serial
-    if resource_id:
-        # Use uiautomator to find and tap by resource-id
+
+    if resource_id or text:
+        # Dump UI and find element bounds via XML parsing
         await run_cmd(
-            ["adb", "-s", serial, "shell", "input", "tap", "0", "0"],
-            timeout=5,
-        )
-        return f"Tapped resource-id: {resource_id}"
-    elif text:
-        # Find element bounds from UI dump, then tap center
-        _, xml, _ = await run_cmd(
-            ["adb", "-s", serial, "shell", "uiautomator", "dump", "/dev/tty"],
+            ["adb", "-s", serial, "shell", "uiautomator", "dump", "/sdcard/ui.xml"],
             timeout=10,
         )
-        import re
-        pattern = f'text="{re.escape(text)}"[^/]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"'
-        match = re.search(pattern, xml)
-        if match:
-            x = (int(match.group(1)) + int(match.group(3))) // 2
-            y = (int(match.group(2)) + int(match.group(4))) // 2
-            await run_cmd(["adb", "-s", serial, "shell", "input", "tap", str(x), str(y)], timeout=5)
-            return f"Tapped '{text}' at ({x}, {y})"
-        return f"Element with text '{text}' not found"
+        _, xml, _ = await run_cmd(
+            ["adb", "-s", serial, "shell", "cat", "/sdcard/ui.xml"],
+            timeout=10,
+        )
+        center = _find_element_center(xml, resource_id=resource_id, text=text)
+        if center:
+            cx, cy = center
+            await run_cmd(
+                ["adb", "-s", serial, "shell", "input", "tap", str(cx), str(cy)],
+                timeout=5,
+            )
+            label = resource_id or text
+            return f"Tapped '{label}' at ({cx}, {cy})"
+        label = resource_id or text
+        return f"Element '{label}' not found on screen"
     elif xy:
         x, y = xy.split(",")
         await run_cmd(["adb", "-s", serial, "shell", "input", "tap", x.strip(), y.strip()], timeout=5)

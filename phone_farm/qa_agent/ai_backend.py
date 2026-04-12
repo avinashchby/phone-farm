@@ -112,7 +112,10 @@ def _parse_action_json(raw: str) -> AgentAction:
     if text.startswith("```"):
         lines = text.split("\n")
         text = "\n".join(lines[1:-1]) if len(lines) > 2 else text
-    data = json.loads(text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return AgentAction(action_type="back", reasoning="Failed to parse AI response, pressing back")
     bounds = data.get("target_bounds")
     if bounds and isinstance(bounds, list) and len(bounds) == 4:
         bounds = tuple(bounds)
@@ -135,7 +138,10 @@ def _parse_visual_issues_json(raw: str) -> list[VisualIssue]:
     if text.startswith("```"):
         lines = text.split("\n")
         text = "\n".join(lines[1:-1]) if len(lines) > 2 else text
-    data = json.loads(text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return []
     if not isinstance(data, list):
         return []
     return [
@@ -162,6 +168,8 @@ class AnthropicBackend(AIBackend):
             )
         self._client = anthropic.AsyncAnthropic()
         self._model = model
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
 
     async def decide_action(
         self,
@@ -188,10 +196,12 @@ class AnthropicBackend(AIBackend):
         response = await self._client.messages.create(
             model=self._model,
             max_tokens=500,
-            temperature=0,
+            temperature=0.3,
             system=DECIDE_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_content}],  # type: ignore[arg-type]
         )
+        self.total_input_tokens += response.usage.input_tokens
+        self.total_output_tokens += response.usage.output_tokens
         raw: str = getattr(response.content[0], "text", "")
         return _parse_action_json(raw)
 
@@ -205,7 +215,7 @@ class AnthropicBackend(AIBackend):
         response = await self._client.messages.create(
             model=self._model,
             max_tokens=1000,
-            temperature=0,
+            temperature=0.1,
             system=VISUAL_SYSTEM_PROMPT,
             messages=[{  # type: ignore[arg-type]
                 "role": "user",

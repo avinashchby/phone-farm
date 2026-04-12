@@ -3,11 +3,12 @@
 from pathlib import Path
 
 from fastapi import APIRouter, UploadFile, File, Form
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from phone_farm.config import load_config
 from phone_farm.doctor import Doctor
-from phone_farm.emulator import Emulator, run_cmd
+from phone_farm.emulator import Emulator
+from phone_farm.emulator import run_cmd
 from phone_farm.web.qa_runner import start_qa_background
 from phone_farm.web.state import AppState
 
@@ -80,6 +81,7 @@ async def boot_phone() -> JSONResponse:
         await emu.start(headless=config.emulator.headless)
         await emu.wait_for_boot()
         state.phones[slot].status = "running"
+        state.phones[slot].emulator = emu
     except Exception as e:
         state.phones[slot].status = "error"
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -94,15 +96,18 @@ async def stop_phone(slot: int) -> JSONResponse:
     if slot not in state.phones:
         return JSONResponse({"error": "Phone not found"}, status_code=404)
 
-    if DEFAULT_CONFIG.exists():
-        config = load_config(DEFAULT_CONFIG)
-        emu = Emulator(
-            slot=slot,
-            api_level=config.emulator.api_level,
-            ram_mb=config.emulator.ram_mb,
-            device_profile=config.emulator.device_profile,
-        )
-        await emu.stop()
+    phone = state.phones[slot]
+    if phone.emulator:
+        await phone.emulator.stop()
+    else:
+        # Fallback: kill via ADB if no stored emulator instance
+        try:
+            await run_cmd(
+                ["adb", "-s", phone.adb_serial, "emu", "kill"],
+                timeout=10,
+            )
+        except Exception:
+            pass
 
     state.remove_phone(slot)
     return JSONResponse({"status": "stopped"})
@@ -134,6 +139,7 @@ async def phone_screenshot(slot: int):
 async def start_qa_test(
     apk: UploadFile = File(...),
     description: str = Form(""),
+    mode: str = Form("deterministic"),
 ) -> JSONResponse:
     """Upload APK and start a QA test.
 
@@ -151,10 +157,14 @@ async def start_qa_test(
         content = await apk.read()
         f.write(content)
 
+    use_ai = mode == "ai" and state.anthropic_api_key is not None
     run_id = state.start_test_run(apk.filename, description)
 
     try:
-        start_qa_background(state, run_id, apk_path)
+        start_qa_background(
+            state, run_id, apk_path,
+            api_key=state.anthropic_api_key if use_ai else None,
+        )
     except RuntimeError as e:
         state.test_runs[run_id].status = "error"
         state.test_runs[run_id].error_message = str(e)
@@ -163,7 +173,21 @@ async def start_qa_test(
             status_code=500,
         )
 
-    return JSONResponse({"run_id": run_id, "status": "started"})
+    mode_label = "AI" if use_ai else "deterministic"
+
+    return HTMLResponse(
+        f'<div class="py-3 border-b border-border">'
+        f'<div class="flex justify-between text-sm">'
+        f'<span class="font-mono">{apk.filename}</span>'
+        f'<span class="text-warn">running ({mode_label})</span>'
+        f'</div>'
+        f'<div class="flex gap-4 mt-1 text-xs text-gray-500">'
+        f'<span>Steps: 0</span><span>Screens: 0</span><span>Bugs: 0</span>'
+        f'</div>'
+        f'<button hx-post="/api/qa/stop/{run_id}" hx-swap="none" '
+        f'class="mt-2 text-xs text-accent hover:underline">Stop</button>'
+        f'</div>'
+    )
 
 
 @router.get("/qa/status/{run_id}")
@@ -200,6 +224,31 @@ async def stop_qa_test(run_id: str) -> JSONResponse:
     if run.task and not run.task.done():
         run.task.cancel()
     return JSONResponse({"status": "stopped"})
+
+
+@router.post("/settings/api-key")
+async def set_api_key(api_key: str = Form("")) -> HTMLResponse:
+    """Save or clear the Anthropic API key."""
+
+
+    state = _get_state()
+    if api_key and api_key.startswith("sk-"):
+        state.anthropic_api_key = api_key
+        return HTMLResponse(
+            '<div class="flex items-center gap-2 mb-3">'
+            '<span class="text-success">&#10004;</span>'
+            '<span class="text-success font-bold">Pro mode active</span>'
+            '</div>'
+            '<p class="text-gray-500 text-sm">API key saved. AI-powered exploration is now enabled.</p>'
+            '<p class="text-gray-500 text-xs mt-1">Reload the QA Test page to see Pro mode.</p>'
+        )
+    state.anthropic_api_key = None
+    return HTMLResponse(
+        '<p class="text-gray-400 text-sm mb-3">'
+        'API key removed. Using deterministic exploration.'
+        '</p>'
+        '<p class="text-gray-500 text-xs">Reload this page to re-add a key.</p>'
+    )
 
 
 @router.get("/qa/report/{run_id}", response_model=None)

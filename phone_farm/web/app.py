@@ -1,5 +1,6 @@
 """FastAPI web application for Phone Farm dashboard."""
 
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -15,6 +16,7 @@ app = FastAPI(title="Phone Farm", version="0.1.0")
 templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
 state = AppState()
+state.anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
 
 # Wire up API routes with shared state
 api_module._state = state
