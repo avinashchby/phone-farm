@@ -18,7 +18,6 @@ from phone_farm.doctor import Doctor
 from phone_farm.log import FarmLogger
 from phone_farm.orchestrator import Orchestrator
 from phone_farm.qa_agent.bug_report import print_report_summary
-from phone_farm.qa_agent.session import QASession
 from phone_farm.reporter import Reporter
 from phone_farm.emu_cli import (
     boot_emulator, teardown_emulator, get_screen, take_screenshot,
@@ -224,7 +223,15 @@ def doctor() -> None:
 @click.option("--backend", default="anthropic", type=click.Choice(["anthropic", "mock"]))
 @click.option("--output", default="./qa_reports", help="Report output directory")
 def qa_test(apk_path: str, description: str, max_steps: int, backend: str, output: str) -> None:
-    """Run AI-powered QA testing on an APK."""
+    """Run AI-powered QA testing on an APK (requires phone-farm-pro)."""
+    try:
+        from phone_farm_pro.session import QASession
+    except ImportError:
+        console.print(
+            "[red]phone-farm-pro is required for AI-powered QA testing.[/red]\n"
+            "Install with: uv pip install phone-farm-pro"
+        )
+        sys.exit(1)
 
     async def _qa_test() -> None:
         config = get_config()

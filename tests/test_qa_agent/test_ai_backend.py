@@ -2,10 +2,8 @@
 
 import json
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from phone_farm.qa_agent.ai_backend import (
-    AnthropicBackend,
     MockBackend,
     _parse_action_json,
     _parse_visual_issues_json,
@@ -44,6 +42,12 @@ def test_parse_action_json_missing_fields_defaults() -> None:
     assert action.reasoning == ""
 
 
+def test_parse_action_json_invalid_returns_back() -> None:
+    action = _parse_action_json("not json at all")
+    assert action.action_type == "back"
+    assert "Failed to parse" in action.reasoning
+
+
 def test_parse_visual_issues_json_finds_issues() -> None:
     raw = json.dumps([
         {"issue_type": "overlap", "severity": "high", "location": "top bar", "description": "Button overlaps title"},
@@ -64,6 +68,11 @@ def test_parse_visual_issues_json_markdown_wrapped() -> None:
     raw = '```json\n[{"issue_type": "contrast", "severity": "low", "location": "footer", "description": "low contrast"}]\n```'
     issues = _parse_visual_issues_json(raw)
     assert len(issues) == 1
+
+
+def test_parse_visual_issues_json_invalid_returns_empty() -> None:
+    issues = _parse_visual_issues_json("not json")
+    assert issues == []
 
 
 @pytest.mark.asyncio
@@ -90,44 +99,3 @@ async def test_mock_backend_no_visual_issues() -> None:
     backend = MockBackend()
     issues = await backend.analyze_screenshot("b64", "xml", "context")
     assert issues == []
-
-
-@pytest.mark.asyncio
-async def test_anthropic_backend_decide_action_calls_api() -> None:
-    mock_anthropic = MagicMock()
-    mock_client = AsyncMock()
-    mock_anthropic.AsyncAnthropic.return_value = mock_client
-    mock_response = MagicMock()
-    mock_response.content = [MagicMock(text='{"action_type": "tap", "target_text": "OK", "reasoning": "test"}')]
-    mock_client.messages.create = AsyncMock(return_value=mock_response)
-
-    with patch.dict("sys.modules", {"anthropic": mock_anthropic}):
-        backend = AnthropicBackend()
-    action = await backend.decide_action(
-        screen_xml="<xml/>",
-        memory_summary="explored 2 screens",
-        app_description="Todo app",
-    )
-    assert action.action_type == "tap"
-    assert action.target_text == "OK"
-    mock_client.messages.create.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_anthropic_backend_analyze_screenshot_calls_api() -> None:
-    mock_anthropic = MagicMock()
-    mock_client = AsyncMock()
-    mock_anthropic.AsyncAnthropic.return_value = mock_client
-    mock_response = MagicMock()
-    mock_response.content = [MagicMock(text='[]')]
-    mock_client.messages.create = AsyncMock(return_value=mock_response)
-
-    with patch.dict("sys.modules", {"anthropic": mock_anthropic}):
-        backend = AnthropicBackend()
-    issues = await backend.analyze_screenshot(
-        screenshot_b64="base64data",
-        screen_xml="<xml/>",
-        context="testing",
-    )
-    assert issues == []
-    mock_client.messages.create.assert_called_once()

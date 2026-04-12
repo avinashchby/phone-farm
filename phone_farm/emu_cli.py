@@ -11,7 +11,6 @@ from phone_farm.config import FarmConfig
 from phone_farm.emulator import Emulator
 from phone_farm.log import FarmLogger
 from phone_farm.qa_agent.logcat import collect_logcat_errors, clear_logcat, detect_crashes, detect_anrs
-from phone_farm.qa_agent.state import get_screen_xml, take_screenshot_b64
 
 logger = FarmLogger()
 
@@ -97,17 +96,22 @@ def get_screen() -> str:
     state = _load_state()
     driver = _get_driver(state)
     try:
-        return get_screen_xml(driver)
+        return driver.page_source
     finally:
         driver.quit()
 
 
 def take_screenshot(output_path: str) -> str:
     """Take a screenshot and save to output_path. Returns the path."""
+    import base64
+
     state = _load_state()
     driver = _get_driver(state)
     try:
-        take_screenshot_b64(driver, save_path=Path(output_path))
+        b64 = driver.get_screenshot_as_base64()
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(base64.b64decode(b64))
         return output_path
     finally:
         driver.quit()

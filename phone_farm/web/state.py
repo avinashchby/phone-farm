@@ -45,8 +45,17 @@ class AppState:
 
     @property
     def pro_mode_available(self) -> bool:
-        """Whether AI-powered Pro mode is available."""
-        return self.anthropic_api_key is not None
+        """Whether AI-powered Pro mode is available.
+
+        Requires both an API key and the phone-farm-pro package.
+        """
+        if self.anthropic_api_key is None:
+            return False
+        try:
+            import phone_farm_pro  # noqa: F401
+            return True
+        except ImportError:
+            return False
 
     def add_phone(self, slot: int, adb_serial: str) -> None:
         """Register a phone at the given slot."""

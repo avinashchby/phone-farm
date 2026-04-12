@@ -92,8 +92,9 @@ async def _run_qa_loop(
         # 5. Exploration loop
         SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
 
-        if api_key:
-            bugs = await _run_ai_exploration(
+        if api_key and state.pro_mode_available:
+            from phone_farm_pro.exploration import run_ai_exploration
+            bugs = await run_ai_exploration(
                 emu, appium, apk_path, run, state, api_key, max_steps,
             )
         else:
@@ -140,66 +141,6 @@ async def _run_qa_loop(
             except Exception:
                 pass
         state.remove_phone(slot)
-
-
-async def _run_ai_exploration(
-    emu: Emulator,
-    appium: AppiumServer,
-    apk_path: Path,
-    run,
-    state: AppState,
-    api_key: str,
-    max_steps: int,
-) -> list[Bug]:
-    """Run AI-powered exploration using the QA agent."""
-    from appium import webdriver
-    from appium.options.android import UiAutomator2Options
-
-    from phone_farm.qa_agent.agent import QAAgent
-    from phone_farm.qa_agent.ai_backend import AnthropicBackend
-
-    options = UiAutomator2Options()
-    options.udid = emu.adb_serial
-    options.app = str(apk_path.resolve())
-    options.auto_grant_permissions = True
-    options.no_reset = True
-
-    driver = webdriver.Remote(
-        command_executor=f"http://127.0.0.1:{appium.port}/wd/hub",
-        options=options,
-    )
-
-    try:
-        import os
-        os.environ["ANTHROPIC_API_KEY"] = api_key
-        ai = AnthropicBackend()
-
-        agent = QAAgent(
-            driver=driver,
-            ai=ai,
-            adb_serial=emu.adb_serial,
-            app_description=run.app_description or run.apk_name,
-            screenshot_dir=SCREENSHOT_DIR,
-            max_steps=max_steps,
-        )
-
-        # Patch agent to update web state on each step
-        original_step = agent._step
-
-        async def _step_with_progress(step: int) -> list[Bug]:
-            result = await original_step(step)
-            run.steps_completed = step + 1
-            run.screens_found = agent.memory.unique_screens
-            run.bugs_found += len(result)
-            return result
-
-        agent._step = _step_with_progress
-        return await agent.run()
-    finally:
-        try:
-            driver.quit()
-        except Exception:
-            pass
 
 
 async def _run_deterministic_exploration(
