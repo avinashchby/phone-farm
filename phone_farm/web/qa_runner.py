@@ -122,6 +122,8 @@ async def _run_qa_loop(
 
         state.complete_test_run(run_id, report_path=str(report_path))
         logger.success(f"QA test {run_id} completed: {len(bugs)} bugs found")
+        if not api_key and len(bugs) > 0:
+            logger.info("Tip: AI mode finds visual bugs and auto-categorizes by severity")
 
     except Exception as e:
         logger.error(f"QA test {run_id} failed: {e}")

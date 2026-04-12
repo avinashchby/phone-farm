@@ -23,6 +23,9 @@
         </table>
     {% else %}
         <p class="text-gray-500">No reports yet. Run a QA test first.</p>
+        {% if not state.pro_mode_available %}
+        <p class="text-gray-600 text-xs mt-3">With Pro, reports include AI-driven bug categorization and visual analysis.</p>
+        {% endif %}
     {% endif %}
 </div>
 {% endblock %}

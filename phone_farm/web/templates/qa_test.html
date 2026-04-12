@@ -8,7 +8,7 @@
             <div class="text-accent font-bold text-lg mb-2">Drop APK here</div>
             <div class="text-gray-500 mb-4">or click to browse</div>
             <input type="file" name="apk" accept=".apk" required class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-accent file:text-white file:cursor-pointer">
-            <textarea name="description" placeholder="Describe your app for better testing..." class="w-full mt-4 p-3 bg-border rounded text-gray-300 text-sm" rows="3"></textarea>
+            <textarea name="description" placeholder="{% if state.pro_mode_available %}Describe your app — AI uses this for smarter exploration...{% else %}Describe your app (used by AI mode for smarter testing)...{% endif %}" class="w-full mt-4 p-3 bg-border rounded text-gray-300 text-sm" rows="3"></textarea>
             {% if state.pro_mode_available %}
             <div class="mt-3 flex items-center gap-2 justify-center">
                 <label class="text-sm text-gray-400">Mode:</label>
@@ -46,12 +46,18 @@
                     <button hx-post="/api/qa/stop/{{ run_id }}" hx-swap="none" class="mt-2 text-xs text-accent hover:underline">Stop</button>
                     {% elif run.report_path %}
                     <a href="/api/qa/report/{{ run_id }}" class="mt-2 text-xs text-success hover:underline">Download Report</a>
+                    {% if run.bugs_found > 0 and not state.pro_mode_available %}
+                    <p class="mt-1 text-xs text-gray-600">Pro tip: AI mode finds visual bugs and categorizes by severity. <a href="/settings" class="text-gray-500 hover:text-accent">Learn more</a></p>
+                    {% endif %}
                     {% endif %}
                 </div>
                 {% endfor %}
             {% else %}
                 <h3 class="font-bold mb-3">Recent Tests</h3>
                 <p class="text-gray-500 text-sm">No tests yet. Upload an APK to start.</p>
+                {% if not state.pro_mode_available %}
+                <p class="text-gray-600 text-xs mt-4">Free mode uses deterministic exploration. <a href="/settings" class="text-gray-500 hover:text-accent">Enable AI mode</a> for smarter bug discovery.</p>
+                {% endif %}
             {% endif %}
         </div>
     </div>

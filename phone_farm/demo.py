@@ -172,6 +172,14 @@ async def run_demo(max_steps: int = 30) -> None:
         console.print("[dim]To test your own app:[/dim]")
         console.print("  phone-farm emu boot ./your-app.apk")
         console.print("  phone-farm serve  # web dashboard")
+        if run.bugs_found > 0:
+            try:
+                import phone_farm_pro  # noqa: F401
+            except ImportError:
+                console.print()
+                console.print("[dim]Want smarter bug detection? Pro mode uses AI vision to find[/dim]")
+                console.print("[dim]visual bugs, categorize by severity, and explain each issue.[/dim]")
+                console.print("[dim]  pip install phone-farm-pro[/dim]")
 
     finally:
         console.print("\n[dim]Cleaning up...[/dim]")
