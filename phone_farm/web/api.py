@@ -140,6 +140,9 @@ async def start_qa_test(
     apk: UploadFile = File(...),
     description: str = Form(""),
     mode: str = Form("deterministic"),
+    test_email: str = Form(""),
+    test_password: str = Form(""),
+    skip_login: str = Form(""),
 ) -> JSONResponse:
     """Upload APK and start a QA test.
 
@@ -159,6 +162,12 @@ async def start_qa_test(
 
     use_ai = mode == "ai" and state.anthropic_api_key is not None
     run_id = state.start_test_run(apk.filename, description)
+
+    # Attach optional login credentials to the run for use by the QA runner
+    run = state.test_runs[run_id]
+    run.test_email = test_email
+    run.test_password = test_password
+    run.skip_login = skip_login == "1"
 
     try:
         start_qa_background(

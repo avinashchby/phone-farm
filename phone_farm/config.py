@@ -49,12 +49,21 @@ class QAAgentSection:
 
 
 @dataclass(frozen=True)
+class TestAccountsSection:
+    """Optional test account credentials for login screen handling."""
+
+    email: str = ""
+    password: str = ""
+
+
+@dataclass(frozen=True)
 class FarmConfig:
     farm: FarmSection
     emulator: EmulatorSection
     automation: AutomationSection
     paths: PathsSection
     qa_agent: QAAgentSection | None = None
+    test_accounts: TestAccountsSection = TestAccountsSection()
 
 
 def default_config() -> FarmConfig:
@@ -117,4 +126,15 @@ def load_config(path: Path) -> FarmConfig:
     if "qa_agent" in raw:
         qa_agent = QAAgentSection(**raw["qa_agent"])
 
-    return FarmConfig(farm=farm, emulator=emulator, automation=automation, paths=paths, qa_agent=qa_agent)
+    test_accounts = TestAccountsSection()
+    if "test_accounts" in raw:
+        test_accounts = TestAccountsSection(**raw["test_accounts"])
+
+    return FarmConfig(
+        farm=farm,
+        emulator=emulator,
+        automation=automation,
+        paths=paths,
+        qa_agent=qa_agent,
+        test_accounts=test_accounts,
+    )

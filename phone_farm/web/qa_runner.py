@@ -13,6 +13,7 @@ from phone_farm.config import FarmConfig, load_config
 from phone_farm.emulator import Emulator, run_cmd
 from phone_farm.log import FarmLogger
 from phone_farm.qa_agent.bug_report import Bug, generate_report, save_report_json
+from phone_farm.qa_agent.login_detect import detect_login_screen, extract_login_fields
 from phone_farm.qa_agent.logcat import (
     clear_logcat,
     collect_logcat_errors,
@@ -100,6 +101,9 @@ async def _run_qa_loop(
         else:
             bugs = await _run_deterministic_exploration(
                 emu, run, state, max_steps, bugs,
+                test_email=getattr(run, "test_email", ""),
+                test_password=getattr(run, "test_password", ""),
+                skip_login=getattr(run, "skip_login", False),
             )
 
         run.bugs_found = len(bugs)
@@ -157,12 +161,35 @@ async def _run_qa_loop(
         state.remove_phone(slot)
 
 
+async def _handle_login(driver, xml: str, email: str, password: str) -> None:
+    """Fill login form and submit. Attempts once; caller retries if needed.
+
+    driver: Appium WebDriver or None (skips field interaction if None).
+    """
+    if driver is None:
+        return
+    fields = extract_login_fields(xml)
+    if fields["email_field"]:
+        el = driver.find_element("id", fields["email_field"])
+        el.clear()
+        el.send_keys(email)
+    if fields["password_field"]:
+        el = driver.find_element("id", fields["password_field"])
+        el.clear()
+        el.send_keys(password)
+    if fields["submit_button"]:
+        driver.find_element("id", fields["submit_button"]).click()
+
+
 async def _run_deterministic_exploration(
-    emu: Emulator,
+    emu,
     run,
     state: AppState,
     max_steps: int,
     bugs: list[Bug],
+    test_email: str = "",
+    test_password: str = "",
+    skip_login: bool = False,
 ) -> list[Bug]:
     """Run deterministic exploration using ADB commands."""
     seen_screens: set[str] = set()
@@ -173,6 +200,45 @@ async def _run_deterministic_exploration(
             break
 
         try:
+            # Fetch current XML to check for login screen before acting
+            await run_cmd(
+                ["adb", "-s", emu.adb_serial, "shell", "uiautomator", "dump", "/sdcard/ui.xml"],
+                timeout=10,
+            )
+            _, current_xml, _ = await run_cmd(
+                ["adb", "-s", emu.adb_serial, "shell", "cat", "/sdcard/ui.xml"],
+                timeout=10,
+            )
+
+            if detect_login_screen(current_xml):
+                if skip_login:
+                    await run_cmd(
+                        ["adb", "-s", emu.adb_serial, "shell", "input", "keyevent", "BACK"],
+                        timeout=5,
+                    )
+                    continue
+                elif test_email and test_password:
+                    login_attempts = getattr(run, "_login_attempts", 0) + 1
+                    run._login_attempts = login_attempts
+                    if login_attempts >= 3:
+                        bugs.append(Bug(
+                            severity="medium",
+                            category="functional",
+                            title="Unable to authenticate with test credentials",
+                            description="Login failed after 3 attempts",
+                            steps_to_reproduce=["Attempted login with provided test credentials"],
+                            screen_signature="login",
+                        ))
+                    else:
+                        await _handle_login(None, current_xml, test_email, test_password)
+                    continue
+                else:
+                    await run_cmd(
+                        ["adb", "-s", emu.adb_serial, "shell", "input", "keyevent", "BACK"],
+                        timeout=5,
+                    )
+                    continue
+
             step_bugs = await _exploration_step(
                 emu.adb_serial, step, seen_screens, run, state, bugs
             )
