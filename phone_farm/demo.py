@@ -168,6 +168,8 @@ async def run_demo(max_steps: int = 30) -> None:
         console.print(f"  Bugs found: {run.bugs_found}")
         if run.report_path:
             console.print(f"  Report: {run.report_path}")
+        if run.html_report_path:
+            console.print(f"  HTML report: {run.html_report_path}")
         console.print()
         console.print("[dim]To test your own app:[/dim]")
         console.print("  phone-farm emu boot ./your-app.apk")

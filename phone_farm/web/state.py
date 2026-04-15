@@ -30,6 +30,7 @@ class TestRun:
     bugs_found: int = 0
     latest_screenshot: str | None = None
     report_path: str | None = None
+    html_report_path: str | None = None
     started_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     error_message: str | None = None
     task: asyncio.Task | None = field(default=None, repr=False)
@@ -83,9 +84,13 @@ class AppState:
             run.screens_found = screens
             run.bugs_found = bugs
 
-    def complete_test_run(self, run_id: str, *, report_path: str) -> None:
-        """Mark a test run as completed and record its report path (no-op if run_id unknown)."""
-        if run_id in self.test_runs:
-            run = self.test_runs[run_id]
-            run.status = "completed"
-            run.report_path = report_path
+    def complete_test_run(
+        self, run_id: str, *, report_path: str, html_report_path: str | None = None
+    ) -> None:
+        """Mark a test run as complete with report paths (no-op if run_id unknown)."""
+        if run_id not in self.test_runs:
+            return
+        run = self.test_runs[run_id]
+        run.status = "completed"
+        run.report_path = report_path
+        run.html_report_path = html_report_path

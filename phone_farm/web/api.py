@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from fastapi import APIRouter, UploadFile, File, Form
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
 from phone_farm.config import load_config
 from phone_farm.doctor import Doctor
@@ -252,18 +252,18 @@ async def set_api_key(api_key: str = Form("")) -> HTMLResponse:
 
 
 @router.get("/qa/report/{run_id}", response_model=None)
-async def get_qa_report(run_id: str):
-    """Download the QA report JSON for a completed test."""
+async def get_qa_report(run_id: str, format: str = "html") -> Response:
+    """Download QA report. format=html (default) or json."""
     state = _get_state()
-    if run_id not in state.test_runs:
-        return JSONResponse({"error": "Test not found"}, status_code=404)
-
-    run = state.test_runs[run_id]
-    if not run.report_path or not Path(run.report_path).exists():
-        return JSONResponse({"error": "Report not ready"}, status_code=404)
-
-    return FileResponse(
-        run.report_path,
-        media_type="application/json",
-        filename=f"qa-report-{run_id}.json",
-    )
+    run = state.test_runs.get(run_id)
+    if not run:
+        return JSONResponse({"error": "Run not found"}, status_code=404)
+    if format == "json" and run.report_path:
+        path = Path(run.report_path)
+        if path.exists():
+            return FileResponse(str(path), media_type="application/json")
+    if run.html_report_path:
+        path = Path(run.html_report_path)
+        if path.exists():
+            return FileResponse(str(path), media_type="text/html")
+    return JSONResponse({"error": "Report not available"}, status_code=404)

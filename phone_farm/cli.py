@@ -234,6 +234,8 @@ def qa_test(apk_path: str, description: str, max_steps: int, backend: str, outpu
         sys.exit(1)
 
     async def _qa_test() -> None:
+        from phone_farm.scoring import compute_score
+        from phone_farm.report_renderer import render_html_report
         config = get_config()
         session = QASession(
             config=config,
@@ -245,6 +247,10 @@ def qa_test(apk_path: str, description: str, max_steps: int, backend: str, outpu
         )
         report = await session.run()
         print_report_summary(report, console)
+        score = compute_score(report)
+        html_path = Path(output) / f"report-{Path(apk_path).stem}.html"
+        html_path.write_text(render_html_report(report, score), encoding="utf-8")
+        console.print(f"[cyan]HTML report:[/cyan] {html_path}")
 
     run_async(_qa_test())
 

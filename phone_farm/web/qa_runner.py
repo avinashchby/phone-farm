@@ -120,7 +120,19 @@ async def _run_qa_loop(
         report_path = REPORT_DIR / f"report-{run_id}.json"
         save_report_json(report, report_path)
 
-        state.complete_test_run(run_id, report_path=str(report_path))
+        from phone_farm.scoring import compute_score
+        from phone_farm.report_renderer import render_html_report
+        score = compute_score(report)
+        run_ss_dir = SCREENSHOT_DIR / run_id
+        html = render_html_report(
+            report, score, screenshots_dir=run_ss_dir if run_ss_dir.is_dir() else None
+        )
+        html_path = REPORT_DIR / f"report-{run_id}.html"
+        html_path.write_text(html, encoding="utf-8")
+
+        state.complete_test_run(
+            run_id, report_path=str(report_path), html_report_path=str(html_path)
+        )
         logger.success(f"QA test {run_id} completed: {len(bugs)} bugs found")
         if not api_key and len(bugs) > 0:
             logger.info("Tip: AI mode finds visual bugs and auto-categorizes by severity")
@@ -222,18 +234,19 @@ async def _exploration_step(
         seen_screens.add(sig)
         run.screens_found = len(seen_screens)
 
-    # Take periodic screenshots
-    if step % 5 == 0:
-        ss_path = SCREENSHOT_DIR / f"qa-{run.run_id}-step-{step}.png"
-        await run_cmd(
-            ["adb", "-s", adb_serial, "shell", "screencap", "-p", "/sdcard/screen.png"],
-            timeout=10,
-        )
-        await run_cmd(
-            ["adb", "-s", adb_serial, "pull", "/sdcard/screen.png", str(ss_path)],
-            timeout=10,
-        )
-        run.latest_screenshot = str(ss_path)
+    # Take a screenshot at every step, stored in a per-run subdirectory
+    run_ss_dir = SCREENSHOT_DIR / run.run_id
+    run_ss_dir.mkdir(parents=True, exist_ok=True)
+    ss_path = run_ss_dir / f"step-{step:03d}.png"
+    await run_cmd(
+        ["adb", "-s", adb_serial, "shell", "screencap", "-p", "/sdcard/screen.png"],
+        timeout=10,
+    )
+    await run_cmd(
+        ["adb", "-s", adb_serial, "pull", "/sdcard/screen.png", str(ss_path)],
+        timeout=10,
+    )
+    run.latest_screenshot = str(ss_path)
 
     # Find clickable elements and interact
     clickables = _extract_clickables(xml)
