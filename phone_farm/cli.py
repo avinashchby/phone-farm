@@ -2,6 +2,7 @@
 
 import asyncio
 import csv
+import os
 import sys
 from pathlib import Path
 
@@ -378,3 +379,107 @@ def serve(port: int, host: str) -> None:
     """Start the web dashboard."""
     console.print(f"[bold green]Phone Farm[/bold green] dashboard at http://{host}:{port}")
     uvicorn.run("phone_farm.web.app:app", host=host, port=port, reload=True)
+
+
+# --- Audit command ---
+
+
+@cli.command()
+@click.argument("apk", type=click.Path(exists=True))
+@click.option("--output", default=None, help="Output directory")
+@click.option("--max-steps", default=None, type=int)
+@click.option("--client-name", default="", help="Client name for report header")
+@click.option("--auditor-name", default="", help="Auditor name for report footer")
+@click.option("--test-email", default="", help="Test account email")
+@click.option("--test-password", default="", help="Test account password")
+@click.option("--skip-login", is_flag=True, help="Skip login screens")
+@click.option("--format", "fmt", default="both", type=click.Choice(["html", "json", "both"]))
+def audit(apk, output, max_steps, client_name, auditor_name, test_email, test_password, skip_login, fmt):
+    """Run a full QA audit on an APK and produce a client-ready report."""
+    from pathlib import Path
+    from datetime import datetime
+    apk_path = Path(apk).resolve()
+    out_dir = Path(output) if output else Path(f"audit-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
+    run_async(_run_audit(apk_path, out_dir, max_steps, client_name, auditor_name,
+                          test_email, test_password, skip_login, fmt))
+
+
+async def _run_audit(apk_path, out_dir, max_steps, client_name, auditor_name,
+                     test_email, test_password, skip_login, fmt):
+    """Orchestrate full audit: boot → install → explore → score → report."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    config = get_config()
+    if max_steps:
+        config.qa_agent.max_steps = max_steps
+
+    console.print(f"[bold]Phone Farm Audit[/bold] — {apk_path.name}")
+    console.print(f"Output: {out_dir}")
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    bugs = await _explore(apk_path, config, api_key, test_email, test_password, skip_login)
+
+    from phone_farm.qa_agent.bug_report import generate_report
+    from phone_farm.scoring import compute_score
+    from datetime import datetime, timezone
+
+    report = generate_report(
+        bugs=bugs, app_description=apk_path.stem, apk_path=str(apk_path),
+        start_time=datetime.now(timezone.utc).isoformat(),
+        end_time=datetime.now(timezone.utc).isoformat(),
+        total_actions=config.qa_agent.max_steps,
+        unique_screens=len({b.screen_signature for b in bugs}),
+        coverage_summary=f"{len({b.screen_signature for b in bugs})} screens explored",
+    )
+    score = compute_score(report)
+
+    _print_summary(report, score)
+    _save_reports(report, score, out_dir, fmt, client_name, auditor_name)
+    _print_cost(api_key)
+
+
+async def _explore(apk_path, config, api_key, test_email, test_password, skip_login):
+    """Run exploration — pro if API key set, free otherwise."""
+    if api_key:
+        try:
+            from phone_farm_pro.agent import run_standalone_qa
+            return await run_standalone_qa(str(apk_path), config, api_key,
+                                           test_email=test_email, test_password=test_password)
+        except ImportError:
+            pass
+    from phone_farm.web.qa_runner import run_standalone_qa as free_qa
+    return await free_qa(str(apk_path), config, test_email=test_email,
+                         test_password=test_password, skip_login=skip_login)
+
+
+def _print_summary(report, score):
+    color = "green" if score["score"] >= 80 else "yellow" if score["score"] >= 50 else "red"
+    console.print(f"\n[bold {color}]Score: {score['score']}/100 ({score['grade']})[/bold {color}]")
+    console.print(f"Bugs: {len(report.bugs)} | Screens: {report.unique_screens}")
+
+
+def _save_reports(report, score, out_dir, fmt, client_name, auditor_name):
+    from phone_farm.qa_agent.bug_report import save_report_json
+    from phone_farm.report_renderer import render_html_report
+    if fmt in ("json", "both"):
+        json_path = out_dir / "report.json"
+        save_report_json(report, json_path)
+        console.print(f"JSON: {json_path}")
+    if fmt in ("html", "both"):
+        html = render_html_report(report, score, client_name=client_name, auditor_name=auditor_name)
+        html_path = out_dir / "report.html"
+        html_path.write_text(html, encoding="utf-8")
+        console.print(f"[cyan]HTML report:[/cyan] {html_path}")
+
+
+def _print_cost(api_key: str) -> None:
+    if not api_key:
+        return
+    try:
+        from phone_farm_pro.backend import AnthropicBackend
+        usage = AnthropicBackend.last_usage()
+        if usage:
+            cost = (usage["input"] * 3 + usage["output"] * 15) / 1_000_000
+            console.print(f"\n[dim]API Usage: {usage['input']:,} input + {usage['output']:,} output tokens[/dim]")
+            console.print(f"[dim]Estimated cost: ${cost:.2f} (Sonnet 4.6)[/dim]")
+    except (ImportError, AttributeError):
+        pass

@@ -205,7 +205,7 @@ async def _handle_login(adb_serial: str, xml: str, email: str, password: str) ->
 async def _run_deterministic_exploration(
     emu: "Emulator",
     run,
-    state: AppState,
+    state: "AppState | None",
     max_steps: int,
     bugs: list[Bug],
     test_email: str = "",
@@ -299,7 +299,7 @@ async def _exploration_step(
     step: int,
     seen_screens: set[str],
     run,
-    state: AppState,
+    state: "AppState | None",
     existing_bugs: list[Bug],
 ) -> list[Bug]:
     """Execute one exploration step: observe screen, interact, check crashes."""
@@ -418,6 +418,68 @@ async def _check_crashes(adb_serial: str) -> list[Bug]:
             logcat_snippet=crash.stacktrace[:500],
         ))
     return bugs
+
+
+async def run_standalone_qa(
+    apk_path: str,
+    config: FarmConfig,
+    test_email: str = "",
+    test_password: str = "",
+    skip_login: bool = False,
+) -> list[Bug]:
+    """Run a full QA exploration standalone (no web dashboard state).
+
+    Boots emulator, installs APK, explores, tears down. Returns bugs.
+    Used by: phone-farm audit CLI, GitHub Action entrypoint.
+    """
+    emu = Emulator(
+        slot=0,
+        api_level=config.emulator.api_level,
+        ram_mb=config.emulator.ram_mb,
+        device_profile=config.emulator.device_profile,
+    )
+    appium = AppiumServer(slot=0, base_port=config.automation.appium_base_port)
+    max_steps = config.qa_agent.max_steps if config.qa_agent else 50
+    bugs: list[Bug] = []
+
+    try:
+        await emu.create_avd()
+        await emu.start(headless=config.emulator.headless)
+        await emu.wait_for_boot()
+        await emu.install_apk(apk_path)
+        await clear_logcat(emu.adb_serial)
+        await appium.start()
+
+        package = await _get_package_from_apk(apk_path)
+        if package:
+            await run_cmd(
+                ["adb", "-s", emu.adb_serial, "shell", "monkey", "-p", package, "1"],
+                timeout=10,
+            )
+            await asyncio.sleep(3)
+
+        from types import SimpleNamespace
+        run = SimpleNamespace(
+            status="running", steps_completed=0, screens_found=0,
+            bugs_found=0, run_id="standalone", latest_screenshot=None,
+            login_attempts=0,
+        )
+
+        bugs = await _run_deterministic_exploration(
+            emu, run, None, max_steps, bugs,
+            test_email=test_email, test_password=test_password,
+            skip_login=skip_login,
+        )
+        return bugs
+    finally:
+        try:
+            await appium.stop()
+        except Exception:
+            pass
+        try:
+            await emu.stop()
+        except Exception:
+            pass
 
 
 async def _get_package_from_apk(apk_path: str) -> str | None:
