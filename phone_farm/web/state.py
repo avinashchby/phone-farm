@@ -34,6 +34,9 @@ class TestRun:
     started_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     error_message: str | None = None
     task: asyncio.Task | None = field(default=None, repr=False)
+    test_email: str = ""
+    test_password: str = ""
+    skip_login: bool = False
 
 
 class AppState:

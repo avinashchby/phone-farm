@@ -143,7 +143,7 @@ async def start_qa_test(
     test_email: str = Form(""),
     test_password: str = Form(""),
     skip_login: str = Form(""),
-) -> JSONResponse:
+) -> Response:
     """Upload APK and start a QA test.
 
     Saves the APK to disk, then launches a background task that:
