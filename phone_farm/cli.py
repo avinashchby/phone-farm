@@ -407,10 +407,16 @@ def audit(apk, output, max_steps, client_name, auditor_name, test_email, test_pa
 async def _run_audit(apk_path, out_dir, max_steps, client_name, auditor_name,
                      test_email, test_password, skip_login, fmt):
     """Orchestrate full audit: boot → install → explore → score → report."""
+    from datetime import datetime, timezone
+    from phone_farm.qa_agent.bug_report import generate_report
+    from phone_farm.scoring import compute_score
+
     out_dir.mkdir(parents=True, exist_ok=True)
     config = get_config()
-    if max_steps:
-        config.qa_agent.max_steps = max_steps
+    if max_steps and config.qa_agent:
+        from dataclasses import replace as _replace
+        config = _replace(config, qa_agent=_replace(config.qa_agent, max_steps=max_steps))
+    actual_steps = config.qa_agent.max_steps if config.qa_agent else 50
 
     console.print(f"[bold]Phone Farm Audit[/bold] — {apk_path.name}")
     console.print(f"Output: {out_dir}")
@@ -418,15 +424,11 @@ async def _run_audit(apk_path, out_dir, max_steps, client_name, auditor_name,
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     bugs = await _explore(apk_path, config, api_key, test_email, test_password, skip_login)
 
-    from phone_farm.qa_agent.bug_report import generate_report
-    from phone_farm.scoring import compute_score
-    from datetime import datetime, timezone
-
     report = generate_report(
         bugs=bugs, app_description=apk_path.stem, apk_path=str(apk_path),
         start_time=datetime.now(timezone.utc).isoformat(),
         end_time=datetime.now(timezone.utc).isoformat(),
-        total_actions=config.qa_agent.max_steps,
+        total_actions=actual_steps,
         unique_screens=len({b.screen_signature for b in bugs}),
         coverage_summary=f"{len({b.screen_signature for b in bugs})} screens explored",
     )
