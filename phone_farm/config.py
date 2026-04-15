@@ -57,6 +57,41 @@ class FarmConfig:
     qa_agent: QAAgentSection | None = None
 
 
+def default_config() -> FarmConfig:
+    """Return sensible defaults when no phone-farm.toml exists.
+
+    Safe to use for: phone-farm audit <apk> with zero config.
+    """
+    return FarmConfig(
+        farm=FarmSection(
+            batch_size=4,
+            cycle_delay_seconds=30,
+            max_retries=3,
+        ),
+        emulator=EmulatorSection(
+            api_level=34,
+            ram_mb=2048,
+            headless=True,
+            device_profile="pixel_6",
+        ),
+        automation=AutomationSection(
+            appium_base_port=4723,
+            default_flow="explore",
+            screenshot_on_failure=True,
+            human_like_delays=True,
+        ),
+        paths=PathsSection(
+            apk="",
+            scripts="scripts",
+            logs="logs",
+            db="phone-farm.db",
+            screenshots="screenshots",
+            snapshots="snapshots",
+        ),
+        qa_agent=None,
+    )
+
+
 def load_config(path: Path) -> FarmConfig:
     """Load and validate config from a TOML file.
 

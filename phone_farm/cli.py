@@ -11,7 +11,7 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from phone_farm.config import load_config, FarmConfig
+from phone_farm.config import load_config, default_config, FarmConfig
 from phone_farm.crypto import derive_key, encrypt
 from phone_farm.db import Database
 from phone_farm.doctor import Doctor
@@ -32,10 +32,10 @@ DEFAULT_SALT = b"phone-farm-v1-salt"
 
 
 def get_config() -> FarmConfig:
-    """Load config from default location."""
+    """Load config from default location, or return defaults if not found."""
     if not DEFAULT_CONFIG.exists():
-        console.print("[red]Config not found. Run: phone-farm init[/red]")
-        sys.exit(1)
+        console.print("[yellow]No phone-farm.toml found, using defaults[/yellow]")
+        return default_config()
     return load_config(DEFAULT_CONFIG)
 
 
