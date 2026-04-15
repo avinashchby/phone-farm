@@ -39,10 +39,11 @@ class TestRun:
 class AppState:
     """Global in-memory state for the web app."""
 
-    def __init__(self) -> None:
+    def __init__(self, db=None) -> None:
         self.phones: dict[int, PhoneState] = {}
         self.test_runs: dict[str, TestRun] = {}
         self.anthropic_api_key: str | None = None
+        self.db = db  # Optional[Database]
 
     @property
     def pro_mode_available(self) -> bool:
@@ -94,3 +95,30 @@ class AppState:
         run.status = "completed"
         run.report_path = report_path
         run.html_report_path = html_report_path
+        if self.db is not None:
+            try:
+                asyncio.create_task(self.db.save_run(run))
+            except RuntimeError:
+                pass  # No event loop — skip (e.g. in tests)
+
+    @classmethod
+    async def load_from_db(cls, db) -> "AppState":
+        """Create AppState pre-populated with runs loaded from the database."""
+        state = cls(db=db)
+        runs = await db.load_runs()
+        for r in runs:
+            run = TestRun(
+                run_id=r["run_id"],
+                apk_name=r["apk_name"],
+                app_description=r.get("app_description", ""),
+                status=r["status"],
+                steps_completed=r.get("steps_completed", 0),
+                screens_found=r.get("screens_found", 0),
+                bugs_found=r.get("bugs_found", 0),
+                report_path=r.get("report_path"),
+                html_report_path=r.get("html_report_path"),
+                started_at=r.get("started_at", ""),
+                error_message=r.get("error_message"),
+            )
+            state.test_runs[run.run_id] = run
+        return state

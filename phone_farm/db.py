@@ -23,6 +23,20 @@ CREATE TABLE IF NOT EXISTS run_history (
     duration_seconds INTEGER,
     error_log TEXT
 );
+
+CREATE TABLE IF NOT EXISTS qa_runs (
+    run_id TEXT PRIMARY KEY,
+    apk_name TEXT NOT NULL,
+    app_description TEXT,
+    status TEXT NOT NULL,
+    steps_completed INTEGER DEFAULT 0,
+    screens_found INTEGER DEFAULT 0,
+    bugs_found INTEGER DEFAULT 0,
+    report_path TEXT,
+    html_report_path TEXT,
+    started_at TEXT,
+    error_message TEXT
+);
 """
 
 
@@ -112,6 +126,41 @@ class Database:
             cursor = await conn.execute(
                 "SELECT * FROM run_history WHERE account_id = ? ORDER BY run_date DESC",
                 (account_id,),
+            )
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
+    async def save_run(self, run) -> None:
+        """Persist a TestRun to the qa_runs table."""
+        async with aiosqlite.connect(self._path) as db:
+            await db.execute(
+                """INSERT OR REPLACE INTO qa_runs
+                   (run_id, apk_name, app_description, status,
+                    steps_completed, screens_found, bugs_found,
+                    report_path, html_report_path, started_at, error_message)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    run.run_id,
+                    run.apk_name,
+                    run.app_description,
+                    run.status,
+                    run.steps_completed,
+                    run.screens_found,
+                    run.bugs_found,
+                    run.report_path,
+                    getattr(run, "html_report_path", None),
+                    run.started_at,
+                    run.error_message,
+                ),
+            )
+            await db.commit()
+
+    async def load_runs(self) -> list[dict]:
+        """Load all qa_runs from the database, most recent first."""
+        async with aiosqlite.connect(self._path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT * FROM qa_runs ORDER BY started_at DESC"
             )
             rows = await cursor.fetchall()
             return [dict(r) for r in rows]

@@ -251,6 +251,19 @@ async def set_api_key(api_key: str = Form("")) -> HTMLResponse:
     )
 
 
+@router.get("/qa/history")
+async def qa_history() -> JSONResponse:
+    """Return past QA runs from DB (or current in-memory runs if no DB)."""
+    state = _get_state()
+    if state.db is not None:
+        runs = await state.db.load_runs()
+        return JSONResponse({"runs": runs})
+    return JSONResponse({"runs": [
+        {"run_id": k, "status": v.status, "apk_name": v.apk_name}
+        for k, v in state.test_runs.items()
+    ]})
+
+
 @router.get("/qa/report/{run_id}", response_model=None)
 async def get_qa_report(run_id: str, format: str = "html") -> Response:
     """Download QA report. format=html (default) or json."""
