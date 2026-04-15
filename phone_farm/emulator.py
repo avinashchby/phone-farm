@@ -1,11 +1,34 @@
 """Android emulator lifecycle management via SDK CLI tools."""
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 
 
 class EmulatorError(Exception):
     """Raised when an emulator operation fails."""
+
+
+_BOOT_DELAYS = [5, 15, 30]
+
+
+async def _retry(coro_fn, max_attempts: int, delay: float, label: str):
+    """Retry an async callable up to max_attempts times with fixed delay.
+
+    Raises EmulatorError on final failure.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return await coro_fn()
+        except Exception as exc:
+            last_exc = exc
+            if attempt < max_attempts:
+                logger.warning("%s failed (attempt %d/%d): %s", label, attempt, max_attempts, exc)
+                await asyncio.sleep(delay)
+    raise EmulatorError(f"{label} failed after {max_attempts} attempts: {last_exc}") from last_exc
 
 
 async def run_cmd(args: list[str], timeout: int = 120) -> tuple[int, str, str]:
@@ -59,7 +82,7 @@ class Emulator:
         return 5554 + (self.slot * 2)
 
     async def create_avd(self) -> None:
-        """Create an AVD using avdmanager."""
+        """Create an AVD using avdmanager. Retries up to 2 times on failure."""
         system_image = f"system-images;android-{self.api_level};google_apis;arm64-v8a"
         args = [
             "avdmanager", "create", "avd",
@@ -68,12 +91,17 @@ class Emulator:
             "--device", self.device_profile,
             "--force",
         ]
-        returncode, _, stderr = await run_cmd(args)
-        if returncode != 0:
-            raise EmulatorError(f"Failed to create AVD {self.avd_name}: {stderr}")
 
-    async def start(self, *, headless: bool = True) -> None:
-        """Start the emulator."""
+        async def _do() -> None:
+            returncode, _, stderr = await run_cmd(args)
+            if returncode != 0:
+                raise Exception(stderr.strip() or "avdmanager failed")
+
+        await _retry(_do, max_attempts=2, delay=5.0, label=f"create_avd(slot={self.slot})")
+
+    async def _start_once(self) -> None:
+        """Launch the emulator process once (no retry). Reads self._headless."""
+        headless = getattr(self, "_headless", True)
         args = [
             "emulator", "-avd", self.avd_name,
             "-port", str(self.adb_port),
@@ -84,6 +112,28 @@ class Emulator:
         if headless:
             args.append("-no-window")
         self._process = await start_emulator_process(args)
+
+    async def _boot_with_retry(self) -> None:
+        """Boot emulator with exponential backoff retry (3 attempts: 5s, 15s, 30s)."""
+        last_exc: Exception | None = None
+        for i, delay in enumerate(_BOOT_DELAYS):
+            try:
+                await self._start_once()
+                return
+            except Exception as exc:
+                last_exc = exc
+                logger.warning("Emulator boot failed (attempt %d/3): %s", i + 1, exc)
+                if i < len(_BOOT_DELAYS) - 1:
+                    await asyncio.sleep(delay)
+        raise EmulatorError(
+            f"Emulator failed to boot after 3 attempts: {last_exc}\n"
+            "Fix: check ANDROID_HOME is set, KVM is enabled, and system images are installed."
+        ) from last_exc
+
+    async def start(self, *, headless: bool = True) -> None:
+        """Start the emulator with retry on boot failure."""
+        self._headless = headless  # type: ignore[attr-defined]
+        await self._boot_with_retry()
 
     async def wait_for_boot(self, timeout: int = 120) -> None:
         """Wait until the emulator has fully booted."""
