@@ -44,13 +44,21 @@ def extract_login_fields(xml: str) -> dict:
         rid = node.get("resource-id", "")
         input_type = node.get("inputType", "")
         text = node.get("text", "")
+        content_desc = node.get("content-desc", "")
         tag = node.tag  # Android XML: tag is the widget class e.g. "android.widget.Button"
 
         if "textPassword" in input_type and not result["password_field"]:
             result["password_field"] = rid
 
-        if _EMAIL_IDS.search(rid) and "EditText" in tag and not result["email_field"]:
-            result["email_field"] = rid
+        # Email field: match by resource-id first, then hint/content-desc
+        hint = node.get("hint", "")
+        if not result["email_field"]:
+            if _EMAIL_IDS.search(rid) and "EditText" in tag:
+                result["email_field"] = rid
+            elif _EMAIL_IDS.search(hint) and "EditText" in tag:
+                result["email_field"] = rid
+            elif _EMAIL_IDS.search(content_desc) and "EditText" in tag and not result["email_field"]:
+                result["email_field"] = rid
 
         if "Button" in tag and _LOGIN_TEXTS.search(text) and not result["submit_button"]:
             result["submit_button"] = rid

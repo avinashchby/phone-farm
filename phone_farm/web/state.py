@@ -37,6 +37,7 @@ class TestRun:
     test_email: str = ""
     test_password: str = ""
     skip_login: bool = False
+    login_attempts: int = 0
 
 
 class AppState:

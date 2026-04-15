@@ -5,6 +5,7 @@ and streams progress updates back to AppState.
 """
 
 import asyncio
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -101,9 +102,9 @@ async def _run_qa_loop(
         else:
             bugs = await _run_deterministic_exploration(
                 emu, run, state, max_steps, bugs,
-                test_email=getattr(run, "test_email", ""),
-                test_password=getattr(run, "test_password", ""),
-                skip_login=getattr(run, "skip_login", False),
+                test_email=run.test_email or config.test_accounts.email,
+                test_password=run.test_password or config.test_accounts.password,
+                skip_login=run.skip_login,
             )
 
         run.bugs_found = len(bugs)
@@ -161,24 +162,44 @@ async def _run_qa_loop(
         state.remove_phone(slot)
 
 
-async def _handle_login(driver, xml: str, email: str, password: str) -> None:
-    """Fill login form and submit. Attempts once; caller retries if needed.
+def _get_element_center(xml: str, resource_id: str) -> tuple[int, int] | None:
+    """Return center coordinates of element with given resource-id from XML bounds."""
+    import re as _re
+    try:
+        root = ET.fromstring(xml)
+    except ET.ParseError:
+        return None
+    for node in root.iter():
+        if node.get("resource-id") == resource_id:
+            m = _re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', node.get("bounds", ""))
+            if m:
+                x1, y1, x2, y2 = map(int, m.groups())
+                return (x1 + x2) // 2, (y1 + y2) // 2
+    return None
 
-    driver: Appium WebDriver or None (skips field interaction if None).
-    """
-    if driver is None:
-        return
+
+async def _handle_login(adb_serial: str, xml: str, email: str, password: str) -> None:
+    """Fill login form via ADB commands and submit."""
     fields = extract_login_fields(xml)
+
+    async def _tap_and_type(resource_id: str, text: str) -> None:
+        center = _get_element_center(xml, resource_id)
+        if center:
+            cx, cy = center
+            await run_cmd(["adb", "-s", adb_serial, "shell", "input", "tap", str(cx), str(cy)], timeout=5)
+            await asyncio.sleep(0.3)
+            await run_cmd(["adb", "-s", adb_serial, "shell", "input", "text", text], timeout=5)
+
     if fields["email_field"]:
-        el = driver.find_element("id", fields["email_field"])
-        el.clear()
-        el.send_keys(email)
+        await _tap_and_type(fields["email_field"], email)
     if fields["password_field"]:
-        el = driver.find_element("id", fields["password_field"])
-        el.clear()
-        el.send_keys(password)
+        await _tap_and_type(fields["password_field"], password)
     if fields["submit_button"]:
-        driver.find_element("id", fields["submit_button"]).click()
+        center = _get_element_center(xml, fields["submit_button"])
+        if center:
+            cx, cy = center
+            await run_cmd(["adb", "-s", adb_serial, "shell", "input", "tap", str(cx), str(cy)], timeout=5)
+    await asyncio.sleep(1.0)
 
 
 async def _run_deterministic_exploration(
@@ -218,9 +239,8 @@ async def _run_deterministic_exploration(
                     )
                     continue
                 elif test_email and test_password:
-                    login_attempts = getattr(run, "_login_attempts", 0) + 1
-                    run._login_attempts = login_attempts
-                    if login_attempts >= 3:
+                    run.login_attempts += 1
+                    if run.login_attempts >= 3:
                         bugs.append(Bug(
                             severity="medium",
                             category="functional",
@@ -229,8 +249,9 @@ async def _run_deterministic_exploration(
                             steps_to_reproduce=["Attempted login with provided test credentials"],
                             screen_signature="login",
                         ))
+                        break  # stop exploration — authentication unrecoverable
                     else:
-                        await _handle_login(None, current_xml, test_email, test_password)
+                        await _handle_login(emu.adb_serial, current_xml, test_email, test_password)
                     continue
                 else:
                     await run_cmd(

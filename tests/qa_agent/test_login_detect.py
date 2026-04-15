@@ -57,3 +57,8 @@ def test_extracts_submit_button():
 
 def test_invalid_xml_returns_false():
     assert detect_login_screen("not xml") is False
+
+
+def test_extract_fields_invalid_xml_returns_nulls():
+    fields = extract_login_fields("not xml")
+    assert fields == {"email_field": None, "password_field": None, "submit_button": None}
