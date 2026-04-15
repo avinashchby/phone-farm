@@ -203,7 +203,7 @@ async def _handle_login(adb_serial: str, xml: str, email: str, password: str) ->
 
 
 async def _run_deterministic_exploration(
-    emu,
+    emu: "Emulator",
     run,
     state: AppState,
     max_steps: int,
